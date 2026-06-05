@@ -1,0 +1,23 @@
+{
+  "name": "agent-debate",
+  "version": "0.1.0",
+  "description": "Local debate room for comparing Gemini, Claude, and Codex CLI outputs.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nanacodesign/agent-debate.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nanacodesign/agent-debate/issues"
+  },
+  "homepage": "https://github.com/nanacodesign/agent-debate#readme",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "check": "node --check server.js"
+  }
+}

@@ -1,0 +1,15 @@
+.DS_Store
+node_modules/
+.playwright-mcp/
+
+# Local debate output and private per-machine settings.
+runs/*.md
+!runs/.gitkeep
+agent-debate.config.json
+
+# Local macOS launcher bundle generated for one machine.
+macos/Agent Debate.app/
+
+# Local screenshots should be regenerated without private paths before publishing.
+*.png
+!public/assets/*.png

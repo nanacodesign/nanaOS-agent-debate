@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agent Debate</title>
+    <link rel="icon" href="/assets/debate.png" type="image/png" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <img class="mark" src="/assets/debate.png" alt="Debate" />
+          <div class="brand-copy">
+            <h1>Agent Debate</h1>
+            <p>nanaOS-flavored local debate room for CLI agents</p>
+          </div>
+        </div>
+
+        <div class="topbar-status">
+          <span id="debateStatus" class="tag debate-status is-ready" aria-live="polite">Ready</span>
+          <button class="button button--outlined button--14 button--round button--icon-start" id="refreshStatus" type="button">
+            <span class="button__icon" aria-hidden="true">Refresh</span>
+            <span class="button__label">Status</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <aside class="setup-rail">
+          <section class="panel project-panel" aria-labelledby="project-title">
+            <div class="panel-head">
+              <div>
+                <h2 id="project-title">Project</h2>
+                <p>Agents run from this folder.</p>
+              </div>
+              <span class="tag tag--12 tag--rectangle">local</span>
+            </div>
+
+            <label class="input-field">
+              <span class="input-label">Path</span>
+              <input id="projectPath" class="input" data-density="12" type="text" placeholder="/path/to/project" />
+            </label>
+
+            <div class="button-row">
+              <button class="button button--outlined button--14 button--round" id="useProjectButton" type="button">
+                <span class="button__label">Use Location</span>
+              </button>
+              <button class="button button--filled button--14 button--round" id="runAppButton" type="button">
+                <span class="button__label">Run App</span>
+              </button>
+            </div>
+
+            <p class="supporting" id="projectNote">Agents will run from this folder.</p>
+            <p class="supporting" id="appStatus">App is stopped.</p>
+          </section>
+
+          <section class="panel agent-panel" aria-labelledby="agents-title">
+            <div class="panel-head">
+              <div>
+                <h2 id="agents-title">Agent Connections</h2>
+                <p>Connect the CLIs you want in the debate.</p>
+              </div>
+              <button class="button button--plain button--14 button--round" id="addAgentButton" type="button">
+                <span class="button__label">Add</span>
+              </button>
+            </div>
+
+            <div class="agent-list" id="agentList"></div>
+
+            <form class="agent-form" id="agentForm" hidden>
+              <input id="agentId" name="id" type="hidden" />
+
+              <label class="input-field">
+                <span class="input-label">Name</span>
+                <input id="agentName" class="input" data-density="12" name="name" type="text" placeholder="Codex" required />
+              </label>
+
+              <label class="input-field">
+                <span class="input-label">Command</span>
+                <input id="agentCommand" class="input" data-density="12" name="command" type="text" placeholder="codex" required />
+              </label>
+
+              <label class="textarea-field">
+                <span class="textarea-label">Arguments JSON</span>
+                <textarea id="agentArgs" class="textarea mono" name="args" rows="5" spellcheck="false" placeholder='["exec", "--skip-git-repo-check", "-"]'></textarea>
+              </label>
+
+              <div class="agent-form-grid">
+                <label class="input-field">
+                  <span class="input-label">Input mode</span>
+                  <select id="agentInput" class="input" data-density="12" name="input">
+                    <option value="stdin">stdin</option>
+                    <option value="stdin-last-message-file">stdin + last message file</option>
+                    <option value="none">none</option>
+                  </select>
+                </label>
+
+                <label class="switch-field">
+                  <input id="agentEnabled" name="enabled" type="checkbox" checked />
+                  <span>Enabled</span>
+                </label>
+              </div>
+
+              <p class="supporting" id="agentNote">Use {prompt} or {outputFile} in args when a CLI needs placeholders.</p>
+
+              <div class="button-row">
+                <button class="button button--filled button--14 button--round" id="saveAgentButton" type="submit">
+                  <span class="button__label">Save Agent</span>
+                </button>
+                <button class="button button--outlined button--14 button--round" id="cancelAgentButton" type="button">
+                  <span class="button__label">Cancel</span>
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel runs-panel" aria-labelledby="runs-title">
+            <div class="panel-head">
+              <div>
+                <h2 id="runs-title">Runs</h2>
+                <p>Recent debate transcripts.</p>
+              </div>
+            </div>
+            <div class="run-list" id="runList"></div>
+          </section>
+        </aside>
+
+        <main class="debate-main">
+          <section class="workflow-band" aria-labelledby="workflow-title">
+            <div class="panel-head">
+              <div>
+                <h2 id="workflow-title">Workflow</h2>
+                <p>Designed for quick maintainer decisions before coding.</p>
+              </div>
+              <span id="runState" class="state">Ready</span>
+            </div>
+            <ol class="workflow-list">
+              <li class="workflow-item">
+                <span class="workflow-index">1</span>
+                <span>Connect agents</span>
+              </li>
+              <li class="workflow-item">
+                <span class="workflow-index">2</span>
+                <span>Frame topic</span>
+              </li>
+              <li class="workflow-item">
+                <span class="workflow-index">3</span>
+                <span>Run 3 debate rounds</span>
+              </li>
+              <li class="workflow-item">
+                <span class="workflow-index">4</span>
+                <span>Synthesize decision</span>
+              </li>
+            </ol>
+          </section>
+
+          <section class="debate-stage" aria-labelledby="debate-title">
+            <div class="panel-head">
+              <div>
+                <h2 id="debate-title">Debate Room</h2>
+                <p>Live output streams into the transcript.</p>
+              </div>
+            </div>
+            <div class="transcript" id="transcript" aria-live="polite"></div>
+          </section>
+        </main>
+
+        <aside class="control-rail">
+          <form class="composer" id="debateForm" action="/api/debate" method="post">
+            <div class="panel-head">
+              <div>
+                <h2>Composer</h2>
+                <p>Topic, context, and output language.</p>
+              </div>
+            </div>
+
+            <label class="textarea-field">
+              <span class="textarea-label">Topic</span>
+              <textarea id="topic" class="textarea" name="topic" rows="5" placeholder="예: 이 API 이름을 start/end로 단순화해도 될까?" required></textarea>
+            </label>
+
+            <label class="input-field">
+              <span class="input-label">Language</span>
+              <select id="language" class="input" data-density="12" name="language">
+                <option value="Korean">Korean</option>
+                <option value="English">English</option>
+                <option value="Japanese">Japanese</option>
+              </select>
+            </label>
+
+            <label class="textarea-field">
+              <span class="textarea-label">Context</span>
+              <textarea id="context" class="textarea" name="context" rows="8" placeholder="참고할 초안, 링크 메모, 요구사항을 붙여넣기"></textarea>
+            </label>
+
+            <div class="button-row">
+              <label class="button button--outlined button--14 button--round file-button">
+                <input id="contextFile" type="file" accept=".txt,.md,.markdown" />
+                <span class="button__label">Import</span>
+              </label>
+              <button class="button button--filled button--14 button--round" id="startButton" type="submit">
+                <span class="button__label">Start Debate</span>
+              </button>
+            </div>
+          </form>
+        </aside>
+      </div>
+    </div>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

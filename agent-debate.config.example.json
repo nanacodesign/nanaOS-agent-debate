@@ -1,0 +1,48 @@
+{
+  "agents": [
+    {
+      "id": "gemini",
+      "name": "Gemini",
+      "command": "gemini",
+      "args": ["-p", "", "--output-format", "text", "--approval-mode", "plan", "--skip-trust"],
+      "input": "stdin",
+      "enabled": true
+    },
+    {
+      "id": "claude",
+      "name": "Claude",
+      "command": "claude",
+      "args": [
+        "-p",
+        "--output-format",
+        "text",
+        "--input-format",
+        "text",
+        "--permission-mode",
+        "plan",
+        "--tools",
+        "",
+        "--no-session-persistence"
+      ],
+      "input": "stdin",
+      "enabled": true
+    },
+    {
+      "id": "codex",
+      "name": "Codex",
+      "command": "codex",
+      "args": [
+        "exec",
+        "--skip-git-repo-check",
+        "--ephemeral",
+        "--color",
+        "never",
+        "-s",
+        "read-only",
+        "-"
+      ],
+      "input": "stdin-last-message-file",
+      "enabled": true
+    }
+  ]
+}
