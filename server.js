@@ -10,7 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { appendFile } from "node:fs/promises";
-import { extname, join, resolve, sep } from "node:path";
+import { dirname, extname, join, resolve, sep } from "node:path";
 import { homedir, tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 
@@ -19,7 +19,22 @@ const publicDir = join(root, "public");
 const runsDir = join(root, "runs");
 const agentConfigPath = join(root, "agent-debate.config.json");
 const defaultProjectPath = resolve(process.env.AGENT_DEBATE_DEFAULT_PROJECT_PATH || root);
+const designSystemDir = resolve(process.env.NANAOS_DESIGN_SYSTEM_PATH || join(root, "..", "design-system"));
+const designSystemStaticRoots = [
+  join(designSystemDir, "dist"),
+  join(designSystemDir, "fonts"),
+  join(designSystemDir, "icons", "material-symbols", "fonts"),
+  join(designSystemDir, "packages", "web-components"),
+];
 const nvmNodeVersionsDir = join(homedir(), ".nvm", "versions", "node");
+const personalCodexSkillsDir = join(homedir(), ".codex", "skills");
+const personalAgentSkillsDir = join(homedir(), ".agents", "skills");
+const pluginCacheDir = join(homedir(), ".codex", "plugins", "cache");
+const skillSearchRoots = [
+  { dir: personalCodexSkillsDir, source: "Personal" },
+  { dir: personalAgentSkillsDir, source: "Personal" },
+  { dir: pluginCacheDir, source: "Plugin" },
+];
 const nvmBinDirs = existsSync(nvmNodeVersionsDir)
   ? readdirSync(nvmNodeVersionsDir).map((version) => join(nvmNodeVersionsDir, version, "bin"))
   : [];
@@ -57,6 +72,7 @@ let appRunStatus = {
   error: "",
   output: "",
 };
+let skillIndexCache = null;
 
 const agentInputModes = new Set(["stdin", "stdin-last-message-file", "none"]);
 const defaultAgents = [
@@ -104,31 +120,15 @@ const defaultAgents = [
   },
 ];
 
-const debateRounds = [
-  {
-    round: 1,
-    title: "Independent positions",
-    phase: "state your own position without seeing the other models",
-    instruction:
-      "This is the first round. You must not refer to other agents because their views are intentionally hidden from you. Present your own clear position, assumptions, and recommended direction.",
-  },
-  {
-    round: 2,
-    title: "Reflection after reading all positions",
-    phase: "read every opening position and refine your own view",
-    instruction:
-      "This is the second round. Read every agent's first-round position, identify where your view changed or became firmer, and explain your updated thinking.",
-  },
-  {
-    round: 3,
-    title: "Final debate",
-    phase: "debate once more after the second-round refinements",
-    instruction:
-      "This is the third round. Debate once more using the first and second rounds. Be direct about remaining disagreements, tradeoffs, and the proposal you would now support.",
-  },
+const defaultWorkflowSteps = [
+  "Read the topic and state independent positions. Agents do not see one another's first answer. Default order: Codex -> Gemini -> Claude.",
+  "Debate first: read every position and state your updated view.",
+  "Debate second: challenge tradeoffs and refine the recommendation.",
+  "Debate third: settle remaining disagreements and name the strongest direction.",
+  "Codex synthesizes every position into one decision.",
 ];
 
-const debateRoundCount = debateRounds.length;
+const workflowStepCount = defaultWorkflowSteps.length;
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -137,6 +137,7 @@ const mimeTypes = {
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
   ".svg": "image/svg+xml",
+  ".woff2": "font/woff2",
 };
 
 function readJsonBody(req, maxBytes = 1_000_000) {
@@ -206,6 +207,363 @@ function toSlug(value, fallback) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
   return slug || fallback;
+}
+
+function toTitle(value) {
+  return String(value || "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+const debateTitleStopWords = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "be",
+  "but",
+  "by",
+  "can",
+  "could",
+  "do",
+  "does",
+  "for",
+  "from",
+  "how",
+  "i",
+  "in",
+  "is",
+  "it",
+  "more",
+  "need",
+  "needs",
+  "not",
+  "of",
+  "on",
+  "or",
+  "our",
+  "should",
+  "that",
+  "the",
+  "this",
+  "to",
+  "use",
+  "using",
+  "want",
+  "what",
+  "when",
+  "where",
+  "with",
+  "would",
+  "component",
+  "components",
+  "componenet",
+  "file",
+  "path",
+  "sites",
+  "src",
+  "users",
+  "var",
+]);
+
+const debateTitleWordOverrides = new Map([
+  ["ai", "AI"],
+  ["api", "API"],
+  ["aria", "ARIA"],
+  ["cli", "CLI"],
+  ["css", "CSS"],
+  ["html", "HTML"],
+  ["json", "JSON"],
+  ["md", "MD"],
+  ["npm", "npm"],
+  ["ui", "UI"],
+  ["url", "URL"],
+  ["ux", "UX"],
+  ["nanaos", "nanaOS"],
+  ["shadcn", "shadcn"],
+]);
+
+const debateTitleHints = [
+  { pattern: new RegExp("\\uC624\\uB978\\uCABD|\\uB05D\\s*\\uC601\\uC5ED"), words: ["Slot"] },
+  { pattern: new RegExp("\\uBA85\\uCE6D|\\uC774\\uB984|\\uB124\\uC774\\uBC0D"), words: ["Naming"] },
+  { pattern: new RegExp("\\uD638\\uBC84"), words: ["Hover"] },
+  { pattern: new RegExp("\\uCE74\\uB4DC"), words: ["Card"] },
+  { pattern: new RegExp("\\uD31D\\uC624\\uBC84"), words: ["Popover"] },
+  { pattern: new RegExp("\\uCF64\\uBCF4"), words: ["Combobox"] },
+  { pattern: new RegExp("\\uC140\\uB809\\uD2B8|\\uC120\\uD0DD"), words: ["Select"] },
+  { pattern: new RegExp("\\uB2E4\\uD06C"), words: ["Dark"] },
+  { pattern: new RegExp("\\uBBF8\\uB514\\uC5B4"), words: ["Media"] },
+  { pattern: new RegExp("\\uC774\\uBBF8\\uC9C0"), words: ["Image"] },
+  { pattern: new RegExp("\\uB514\\uC790\\uC778\\s*\\uC2DC\\uC2A4\\uD15C"), words: ["Design", "System"] },
+  { pattern: new RegExp("\\uD0C0\\uC774\\uD3EC"), words: ["Typography"] },
+  { pattern: new RegExp("\\uAC80\\uC99D"), words: ["Validation"] },
+  { pattern: new RegExp("\\uB808\\uC774\\uC544\\uC6C3"), words: ["Layout"] },
+  { pattern: new RegExp("\\uD1A0\\uD070"), words: ["Token"] },
+  { pattern: new RegExp("\\uBAA8\\uB2EC"), words: ["Modal"] },
+  { pattern: new RegExp("\\uD328\\uB110"), words: ["Panel"] },
+  { pattern: new RegExp("\\uB2E4\\uC774\\uC5BC\\uB85C\\uADF8"), words: ["Dialog"] },
+];
+
+function formatDebateTitleWord(word) {
+  const cleanWord = String(word || "").replace(/[^a-z0-9]/gi, "");
+  const lowerWord = cleanWord.toLowerCase();
+  if (!cleanWord || debateTitleStopWords.has(lowerWord)) return "";
+  if (debateTitleWordOverrides.has(lowerWord)) return debateTitleWordOverrides.get(lowerWord);
+  return `${cleanWord.slice(0, 1).toUpperCase()}${cleanWord.slice(1).toLowerCase()}`;
+}
+
+function debateTitleFromTopic(topic, maxWords = 5) {
+  const text = String(topic || "");
+  const candidates = [];
+
+  for (const match of text.matchAll(/[a-z][a-z0-9]*/gi)) {
+    candidates.push({ index: match.index ?? 0, word: match[0] });
+  }
+
+  for (const hint of debateTitleHints) {
+    const match = hint.pattern.exec(text);
+    if (!match) continue;
+    hint.words.forEach((word, offset) => {
+      candidates.push({ index: (match.index ?? 0) + offset / 10, word });
+    });
+  }
+
+  const words = [];
+  const seen = new Set();
+  for (const candidate of candidates.sort((a, b) => a.index - b.index)) {
+    const formatted = formatDebateTitleWord(candidate.word);
+    const key = formatted.toLowerCase();
+    if (!formatted || seen.has(key)) continue;
+    words.push(formatted);
+    seen.add(key);
+    if (words.length >= maxWords) break;
+  }
+
+  return words.length ? words.join(" ") : "Debate";
+}
+
+function uniqueRunFilename(topic, created) {
+  const date = created.toISOString().slice(0, 10);
+  const title = debateTitleFromTopic(topic);
+  const baseName = `${title} ${date}`.replace(/[<>:"/\\|?*\u0000-\u001F]+/g, "").trim();
+  let filename = `${baseName}.md`;
+  let index = 2;
+
+  while (existsSync(join(runsDir, filename))) {
+    filename = `${baseName} ${index}.md`;
+    index += 1;
+  }
+
+  return filename;
+}
+
+function compactText(value, maxLength = 320) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1).trim()}...` : text;
+}
+
+function normalizeWorkflowSteps(value) {
+  const source = Array.isArray(value) ? value : defaultWorkflowSteps;
+  const steps = source
+    .map((step) => (typeof step === "string" ? step : step?.text || step?.instruction || ""))
+    .map((step) => compactText(step, 700))
+    .filter(Boolean)
+    .slice(0, workflowStepCount);
+
+  while (steps.length < workflowStepCount) {
+    steps.push(defaultWorkflowSteps[steps.length]);
+  }
+
+  return steps.map((text, index) => ({
+    index,
+    number: index + 1,
+    text,
+    title: compactText(text, 88),
+    kind: index === workflowStepCount - 1 ? "synthesis" : "debate",
+  }));
+}
+
+function formatWorkflowSteps(steps) {
+  return steps.map((step) => `${step.number}. ${step.text}`).join("\n");
+}
+
+function findSkillFiles(dir, depth = 0, results = []) {
+  if (!existsSync(dir) || depth > 8 || results.length >= 500) return results;
+
+  let entries = [];
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return results;
+  }
+
+  for (const entry of entries) {
+    if (entry.name === "node_modules" || entry.name === ".git") continue;
+
+    const fullPath = join(dir, entry.name);
+    if (entry.isFile() && entry.name === "SKILL.md") {
+      results.push(fullPath);
+      continue;
+    }
+
+    if (entry.isDirectory()) {
+      findSkillFiles(fullPath, depth + 1, results);
+    }
+  }
+
+  return results;
+}
+
+function extractFrontMatter(markdown) {
+  if (!markdown.startsWith("---\n")) return "";
+  const endIndex = markdown.indexOf("\n---", 4);
+  return endIndex === -1 ? "" : markdown.slice(4, endIndex);
+}
+
+function readFrontMatterValue(frontMatter, key) {
+  const lines = frontMatter.split("\n");
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const match = line.match(new RegExp(`^${key}:\\s*(.*)$`));
+    if (!match) continue;
+
+    const value = match[1].trim();
+    if (value !== "|" && value !== ">") {
+      return value.replace(/^["']|["']$/g, "");
+    }
+
+    const block = [];
+    for (let blockIndex = index + 1; blockIndex < lines.length; blockIndex += 1) {
+      const blockLine = lines[blockIndex];
+      if (blockLine.trim() && !/^\s/.test(blockLine)) break;
+      block.push(blockLine.trim());
+    }
+    return block.join(" ");
+  }
+
+  return "";
+}
+
+function skillSourceFromPath(filePath, fallbackSource) {
+  if (filePath.startsWith(personalCodexSkillsDir) || filePath.startsWith(personalAgentSkillsDir)) {
+    return "Personal";
+  }
+
+  const parts = filePath.split(sep);
+  const cacheIndex = parts.lastIndexOf("cache");
+  if (cacheIndex >= 0 && parts[cacheIndex + 2]) {
+    return toTitle(parts[cacheIndex + 2]);
+  }
+
+  return fallbackSource;
+}
+
+function loadSkillIndex() {
+  if (skillIndexCache) return skillIndexCache;
+
+  const skills = [];
+  const seenIds = new Set();
+
+  for (const rootConfig of skillSearchRoots) {
+    for (const filePath of findSkillFiles(rootConfig.dir)) {
+      let markdown = "";
+      try {
+        markdown = readFileSync(filePath, "utf8");
+      } catch {
+        continue;
+      }
+
+      const frontMatter = extractFrontMatter(markdown);
+      const folderName = filePath.split(sep).at(-2) || "skill";
+      const name = readFrontMatterValue(frontMatter, "name") || folderName;
+      const description = compactText(readFrontMatterValue(frontMatter, "description"));
+      const source = skillSourceFromPath(filePath, rootConfig.source);
+      const baseId = toSlug(`${source}-${name}`, `skill-${skills.length + 1}`);
+      let id = baseId;
+      let duplicate = 2;
+
+      while (seenIds.has(id)) {
+        id = `${baseId}-${duplicate}`;
+        duplicate += 1;
+      }
+      seenIds.add(id);
+
+      skills.push({
+        id,
+        name,
+        title: toTitle(name),
+        description,
+        source,
+      });
+    }
+  }
+
+  skillIndexCache = skills.sort((first, second) =>
+    `${first.title} ${first.source}`.localeCompare(`${second.title} ${second.source}`),
+  );
+  return skillIndexCache;
+}
+
+function scoreSkill(skill, query) {
+  if (!query) return 1;
+
+  const terms = query
+    .toLowerCase()
+    .replace(/^[/@$]+/, "")
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+
+  if (!terms.length) return 1;
+
+  const name = skill.name.toLowerCase();
+  const title = skill.title.toLowerCase();
+  const source = skill.source.toLowerCase();
+  const description = skill.description.toLowerCase();
+  const haystack = `${name} ${title} ${source} ${description}`;
+
+  if (!terms.every((term) => haystack.includes(term))) return 0;
+
+  return terms.reduce((score, term) => {
+    if (name === term || title === term) return score + 120;
+    if (name.startsWith(term) || title.startsWith(term)) return score + 80;
+    if (name.includes(term) || title.includes(term)) return score + 40;
+    if (source.includes(term)) return score + 20;
+    return score + 5;
+  }, 0);
+}
+
+function searchSkills(query) {
+  return loadSkillIndex()
+    .map((skill) => ({ ...skill, score: scoreSkill(skill, query) }))
+    .filter((skill) => skill.score > 0)
+    .sort((first, second) => second.score - first.score || first.title.localeCompare(second.title))
+    .slice(0, 12)
+    .map(({ score, ...skill }) => skill);
+}
+
+function normalizeSelectedSkills(value) {
+  const source = Array.isArray(value) ? value : [];
+  return source.slice(0, 8).map((skill) => ({
+    name: compactText(skill?.name || skill?.title || "Selected skill", 80),
+    title: compactText(skill?.title || skill?.name || "Selected skill", 80),
+    description: compactText(skill?.description || "", 500),
+    source: compactText(skill?.source || "Skill", 80),
+  }));
+}
+
+function formatSelectedSkills(skills) {
+  if (!skills.length) return "(No selected skills.)";
+  return skills
+    .map((skill) => {
+      const description = skill.description ? `: ${skill.description}` : "";
+      return `- ${skill.title} (${skill.source})${description}`;
+    })
+    .join("\n");
 }
 
 function normalizeAgentConfig(agent, index) {
@@ -422,6 +780,55 @@ function resolveRunFile(file) {
   return { file: cleanFile, fullPath };
 }
 
+function requestMatchesUiOrigin(req) {
+  const origin = req.headers.origin;
+  if (!origin) return true;
+
+  try {
+    const originUrl = new URL(origin);
+    const requestUrl = new URL(`http://${req.headers.host || `${host}:${port}`}`);
+    return originUrl.protocol === requestUrl.protocol && originUrl.host === requestUrl.host;
+  } catch {
+    return false;
+  }
+}
+
+// Reject requests whose Host header is a domain name (only IP literals and
+// "localhost" are expected for a local server). This mitigates DNS-rebinding
+// attacks, where a malicious site points a hostname at 127.0.0.1 to bypass the
+// Origin check below.
+function requestHostIsSafe(req) {
+  const hostHeader = req.headers.host;
+  if (!hostHeader) return true;
+
+  const hostname = hostHeader.replace(/:\d+$/, "").replace(/^\[|\]$/g, "");
+  if (hostname === "localhost") return true;
+
+  const isIpv4 = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname);
+  const isIpv6 = hostname.includes(":");
+  return isIpv4 || isIpv6;
+}
+
+function openRunFileFolder(fullPath) {
+  const folderPath = dirname(fullPath);
+  let command = "";
+  let args = [];
+
+  if (process.platform === "darwin") {
+    command = "open";
+    args = ["-R", fullPath];
+  } else if (process.platform === "win32") {
+    command = "explorer";
+    args = [`/select,${fullPath}`];
+  } else {
+    command = "xdg-open";
+    args = [folderPath];
+  }
+
+  const child = spawn(command, args, { detached: true, stdio: "ignore" });
+  child.unref();
+}
+
 function commandPath(command) {
   const result = spawnSync("which", [command], { encoding: "utf8" });
   return result.status === 0 ? result.stdout.trim() : "";
@@ -568,6 +975,21 @@ function getStatus(agents = readAgents()) {
   });
 }
 
+function debateAgentRank(agent) {
+  const value = `${agent.id || ""} ${agent.name || ""} ${agent.command || ""}`.toLowerCase();
+  if (value.includes("codex")) return 0;
+  if (value.includes("gemini")) return 1;
+  if (value.includes("claude")) return 2;
+  return 10;
+}
+
+function orderDebateAgents(agents) {
+  return agents
+    .map((agent, index) => ({ agent, index }))
+    .sort((left, right) => debateAgentRank(left.agent) - debateAgentRank(right.agent) || left.index - right.index)
+    .map(({ agent }) => agent);
+}
+
 function trimContext(transcript, maxChars) {
   if (transcript.length <= maxChars) return transcript;
   const marker = "\n\n[... earlier transcript omitted ...]\n\n";
@@ -577,7 +999,18 @@ function trimContext(transcript, maxChars) {
   return transcript.slice(0, head) + marker + transcript.slice(-tail);
 }
 
-function buildPrompt({ topic, context, language, projectPath, roundConfig, agentName, participantNames, transcript }) {
+function buildPrompt({
+  topic,
+  context,
+  selectedSkills,
+  language,
+  projectPath,
+  roundConfig,
+  debateRoundCount,
+  agentName,
+  participantNames,
+  transcript,
+}) {
   return `You are ${agentName}, one of the AI agents in a structured debate.
 
 Topic:
@@ -589,17 +1022,21 @@ ${projectPath}
 Imported context:
 ${context.trim() || "(No imported context.)"}
 
+Selected skills:
+${formatSelectedSkills(selectedSkills)}
+
 Debate setup:
 - Participants: ${participantNames}.
-- Current round: ${roundConfig.round} of ${debateRoundCount}: ${roundConfig.title}.
-- Your phase: ${roundConfig.phase}.
+- Current workflow step: ${roundConfig.number} of ${workflowStepCount}: ${roundConfig.title}.
+- Current debate round: ${roundConfig.round} of ${debateRoundCount}.
 - Reply in ${language}.
 - Do not use tools, browse, edit files, or run commands.
+- Use selected skills as framing guidance when they are relevant, but do not claim that you executed a skill.
 - Be concise: 4 to 8 bullet points, then one short conclusion.
 - If you disagree, make the disagreement specific and useful.
 
 Round instruction:
-${roundConfig.instruction}
+${roundConfig.text}
 
 Transcript so far:
 ${transcript.trim() || "(No prior transcript.)"}
@@ -607,7 +1044,17 @@ ${transcript.trim() || "(No prior transcript.)"}
 Now write ${agentName}'s contribution for round ${roundConfig.round}.`;
 }
 
-function buildSummaryPrompt({ topic, context, language, projectPath, participantNames, transcript }) {
+function buildSummaryPrompt({
+  topic,
+  context,
+  selectedSkills,
+  language,
+  projectPath,
+  participantNames,
+  workflowSteps,
+  synthesisStep,
+  transcript,
+}) {
   return `You are the moderator and final synthesizer for a completed multi-agent debate.
 
 Topic:
@@ -619,17 +1066,26 @@ ${projectPath}
 Imported context:
 ${context.trim() || "(No imported context.)"}
 
+Selected skills:
+${formatSelectedSkills(selectedSkills)}
+
+Workflow:
+${formatWorkflowSteps(workflowSteps)}
+
+Synthesis instruction:
+${synthesisStep.text}
+
 Debate transcript:
 ${transcript.trim() || "(No debate transcript.)"}
 
 Write the final synthesis in ${language}.
 
 Required output:
-1. A short summary of the third-round debate.
-2. A markdown table comparing how these agents changed across rounds: ${participantNames}. Include columns for Agent, Round 1 view, Round 2 shift, Round 3 final stance. Use table labels in ${language}.
+1. A short summary of the completed debate.
+2. A markdown table comparing how these agents changed across the workflow: ${participantNames}. Include columns for Agent, Opening view, Strongest shift, and Final stance. Use table labels in ${language}.
 3. A short final proposal as either a compact markdown table or a brief result list.
 
-Keep the final proposal practical and concise. Do not use tools, browse, edit files, or run commands.`;
+Keep the final proposal practical and concise. Do not use tools, browse, edit files, or run commands. Use selected skills as framing guidance when they are relevant, but do not claim that you executed a skill.`;
 }
 
 function writeEvent(res, event) {
@@ -713,7 +1169,7 @@ function selectSynthesizer(agents) {
 async function handleDebate(req, res) {
   let payload;
   try {
-    payload = await readJsonBody(req);
+    payload = await readJsonBody(req, 6_000_000);
   } catch (error) {
     sendJson(res, error.message === "Request body is too large." ? 413 : 400, {
       error: error.message,
@@ -723,6 +1179,11 @@ async function handleDebate(req, res) {
 
   const topic = String(payload.topic || "").trim();
   const context = String(payload.context || "").slice(0, 20000);
+  const selectedSkills = normalizeSelectedSkills(payload.skills);
+  const workflowSteps = normalizeWorkflowSteps(payload.workflow);
+  const debateSteps = workflowSteps.filter((step) => step.kind === "debate");
+  const synthesisStep = workflowSteps.find((step) => step.kind === "synthesis") || workflowSteps.at(-1);
+  const debateRoundCount = debateSteps.length;
   const language = String(payload.language || "Korean").trim() || "Korean";
   let projectPath;
   try {
@@ -737,7 +1198,7 @@ async function handleDebate(req, res) {
     return;
   }
 
-  const debateAgents = readAgents().filter((agent) => agent.enabled);
+  const debateAgents = orderDebateAgents(readAgents().filter((agent) => agent.enabled));
   if (!debateAgents.length) {
     sendJson(res, 400, { error: "Enable at least one agent before starting a debate." });
     return;
@@ -752,13 +1213,13 @@ async function handleDebate(req, res) {
   });
 
   const created = new Date();
-  const filename = `${created.toISOString().replace(/[:.]/g, "-")}.md`;
+  const filename = uniqueRunFilename(topic, created);
   const runPath = join(runsDir, filename);
   let transcript = "";
 
   writeFileSync(
     runPath,
-    `# Agent Debate\n\n- Topic: ${topic}\n- Project: ${projectPath}\n- Created: ${created.toISOString()}\n- Workflow: 3 debate rounds plus Codex final synthesis\n- Language: ${language}\n\n`,
+    `# Agent Debate\n\n- Topic: ${topic}\n- Project: ${projectPath}\n- Created: ${created.toISOString()}\n- Workflow: Custom ${workflowSteps.length}-step debate workflow\n- Language: ${language}\n- Skills: ${selectedSkills.length ? selectedSkills.map((skill) => skill.title).join(", ") : "None"}\n\n## Workflow\n\n${formatWorkflowSteps(workflowSteps)}\n\n`,
     "utf8",
   );
 
@@ -767,13 +1228,20 @@ async function handleDebate(req, res) {
     file: filename,
     topic,
     rounds: debateRoundCount,
+    workflow: workflowSteps,
     language,
     projectPath,
     agents: debateAgents.map((agent) => agent.name),
+    skills: selectedSkills.map((skill) => skill.title),
   });
 
-  for (const roundConfig of debateRounds) {
+  for (const roundConfig of debateSteps.map((step, index) => ({ ...step, round: index + 1 }))) {
     const transcriptSnapshot = roundConfig.round === 1 ? "" : trimContext(transcript, 30000);
+    writeEvent(res, {
+      type: "step-start",
+      stepIndex: roundConfig.index,
+      stepTitle: roundConfig.title,
+    });
 
     for (const agent of debateAgents) {
       writeEvent(res, {
@@ -781,13 +1249,16 @@ async function handleDebate(req, res) {
         agent: agent.name,
         round: roundConfig.round,
         roundTitle: roundConfig.title,
+        stepIndex: roundConfig.index,
       });
       const prompt = buildPrompt({
         topic,
         context,
+        selectedSkills,
         language,
         projectPath,
         roundConfig,
+        debateRoundCount,
         agentName: agent.name,
         participantNames,
         transcript: transcriptSnapshot,
@@ -802,26 +1273,42 @@ async function handleDebate(req, res) {
         agent: agent.name,
         round: roundConfig.round,
         roundTitle: roundConfig.title,
+        stepIndex: roundConfig.index,
         response,
       });
     }
+
+    writeEvent(res, {
+      type: "step-done",
+      stepIndex: roundConfig.index,
+      stepTitle: roundConfig.title,
+    });
   }
 
   const synthesisAgent = selectSynthesizer(debateAgents);
   if (synthesisAgent) {
     writeEvent(res, {
+      type: "step-start",
+      stepIndex: synthesisStep.index,
+      stepTitle: synthesisStep.title,
+    });
+    writeEvent(res, {
       type: "agent-start",
       agent: synthesisAgent.name,
       round: "Final",
-      roundTitle: `${synthesisAgent.name} synthesis`,
+      roundTitle: synthesisStep.title || `${synthesisAgent.name} synthesis`,
+      stepIndex: synthesisStep.index,
     });
 
     const summaryPrompt = buildSummaryPrompt({
       topic,
       context,
+      selectedSkills,
       language,
       projectPath,
       participantNames,
+      workflowSteps,
+      synthesisStep,
       transcript: trimContext(transcript, 45000),
     });
     const summary = await runAgent(synthesisAgent, summaryPrompt, res, projectPath);
@@ -832,12 +1319,18 @@ async function handleDebate(req, res) {
       type: "agent-done",
       agent: synthesisAgent.name,
       round: "Final",
-      roundTitle: `${synthesisAgent.name} synthesis`,
+      roundTitle: synthesisStep.title || `${synthesisAgent.name} synthesis`,
+      stepIndex: synthesisStep.index,
       response: summary,
+    });
+    writeEvent(res, {
+      type: "step-done",
+      stepIndex: synthesisStep.index,
+      stepTitle: synthesisStep.title,
     });
   }
 
-  writeEvent(res, { type: "done", file: filename });
+  writeEvent(res, { type: "done", file: filename, workflow: workflowSteps });
   res.end();
 }
 
@@ -866,15 +1359,55 @@ async function handleAgents(req, res) {
 function handleRuns(res) {
   const files = readdirSync(runsDir)
     .filter((file) => file.endsWith(".md"))
-    .sort()
-    .reverse()
+    .map((file) => {
+      const fullPath = join(runsDir, file);
+      let modified = 0;
+      try {
+        modified = statSync(fullPath).mtimeMs;
+      } catch {
+        modified = 0;
+      }
+      return {
+        file,
+        modified,
+        name: file.replace(".md", ""),
+      };
+    })
+    .sort((a, b) => b.modified - a.modified || b.file.localeCompare(a.file))
     .slice(0, 20)
-    .map((file) => ({
-      file,
-      name: file.replace(".md", ""),
-    }));
+    .map(({ file, name }) => ({ file, name }));
 
   sendJson(res, 200, { runs: files });
+}
+
+async function handleOpenRunFolder(req, res) {
+  if (!requestMatchesUiOrigin(req)) {
+    sendJson(res, 403, { error: "Request origin is not allowed." });
+    return;
+  }
+
+  try {
+    const payload = await readJsonBody(req, 20_000);
+    const { file, fullPath } = resolveRunFile(payload.file);
+    openRunFileFolder(fullPath);
+    sendJson(res, 200, { status: "opened", file });
+  } catch (error) {
+    const status =
+      error.message === "Request body is too large."
+        ? 413
+        : error.message === "Run file not found."
+          ? 404
+          : error.message === "Invalid run file."
+            ? 400
+            : 500;
+    sendJson(res, status, { error: error.message || "Could not open folder." });
+  }
+}
+
+function handleSkills(req, res) {
+  const url = new URL(req.url, `http://${host}`);
+  const query = String(url.searchParams.get("q") || "").trim().slice(0, 80);
+  sendJson(res, 200, { skills: searchSkills(query) });
 }
 
 function handleRunViewer(req, res) {
@@ -889,27 +1422,27 @@ function handleRunViewer(req, res) {
       res,
       200,
       `<!doctype html>
-<html lang="ko">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(title)} · Agent Debate</title>
+    <link rel="stylesheet" href="/theme.css" />
+    <link rel="stylesheet" href="/nanaos/dist/nanaos.css" />
     <style>
       :root {
-        color-scheme: light;
-        --bg: #efebe1;
-        --surface: #fffdf8;
-        --ink: #171614;
-        --muted: #6f6a60;
-        --line: #d7cdbc;
-        --blue: #1f418f;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color-scheme: light dark;
+        --viewer-bg: var(--background-dim1);
+        --viewer-surface: var(--background-default);
+        --viewer-muted: var(--foreground-dim2);
+        --viewer-line: color-mix(in oklab, var(--foreground-default) 14%, transparent);
+        --viewer-line-strong: color-mix(in oklab, var(--foreground-default) 28%, transparent);
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        background: var(--bg);
-        color: var(--ink);
+        background: var(--viewer-bg);
+        color: var(--foreground-default);
       }
       .viewer-shell {
         width: min(980px, calc(100vw - 32px));
@@ -923,91 +1456,135 @@ function handleRunViewer(req, res) {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 16px;
-        padding: 12px 0;
-        background: var(--bg);
+        gap: var(--spacing-16);
+        margin-bottom: var(--spacing-16);
+        padding: var(--spacing-12) 0;
+        background: var(--viewer-bg);
       }
       .viewer-title {
         min-width: 0;
       }
       .viewer-title h1 {
         margin: 0;
-        font-size: 22px;
-        line-height: 1.2;
+        font-size: var(--font-size-20);
+        line-height: var(--line-height-12);
       }
       .viewer-title p {
-        margin: 4px 0 0;
-        color: var(--muted);
-        font-size: 13px;
+        margin: var(--spacing-4) 0 0;
+        color: var(--viewer-muted);
+        font-size: var(--font-size-12);
         overflow-wrap: anywhere;
       }
-      .back-link {
+      .viewer-actions {
+        display: flex;
         flex: 0 0 auto;
-        border: 1px solid var(--blue);
-        border-radius: 8px;
-        padding: 10px 12px;
-        color: var(--blue);
-        font-weight: 850;
+        align-items: center;
+        justify-content: flex-end;
+        gap: var(--spacing-8);
+        min-width: 0;
+      }
+      .viewer-action-stack {
+        display: grid;
+        gap: var(--spacing-6);
+        justify-items: end;
+      }
+      .viewer-button {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        gap: var(--spacing-8);
+        min-height: 36px;
+        padding: 0 var(--spacing-14);
+        border: var(--border-width-1) solid var(--viewer-line-strong);
+        border-radius: var(--border-radius-800);
+        background: transparent;
+        color: var(--foreground-default);
+        cursor: pointer;
+        font: inherit;
+        font-size: var(--font-size-14);
+        font-weight: var(--font-weight-700);
+        line-height: var(--line-height-10);
         text-decoration: none;
-        background: white;
+        white-space: nowrap;
+      }
+      .viewer-button:hover:not(:disabled) {
+        background: var(--state-hover-background);
+      }
+      .viewer-button:focus-visible {
+        outline: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color);
+        outline-offset: var(--focus-ring-offset);
+      }
+      .viewer-button:disabled {
+        background: var(--state-disabled-background);
+        color: var(--state-disabled-foreground);
+        cursor: not-allowed;
+      }
+      .button__icon {
+        display: inline-flex;
+      }
+      .folder-status {
+        min-height: 16px;
+        color: var(--viewer-muted);
+        font-size: var(--font-size-12);
+        line-height: var(--line-height-14);
       }
       main {
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: var(--surface);
-        padding: 26px;
-        box-shadow: 0 18px 42px rgba(35, 28, 17, 0.1);
+        border: var(--border-width-1) solid var(--viewer-line);
+        border-radius: var(--border-radius-8);
+        background: var(--viewer-surface);
+        padding: var(--spacing-24);
+        box-shadow: var(--elevation-6);
       }
       h1, h2, h3, h4, h5, h6 {
-        margin: 24px 0 10px;
-        line-height: 1.25;
+        margin: var(--spacing-24) 0 var(--spacing-10);
+        line-height: var(--line-height-12);
       }
       main > h1:first-child,
       main > h2:first-child {
         margin-top: 0;
       }
       p, li {
-        font-size: 15px;
-        line-height: 1.65;
+        font-size: var(--font-size-14);
+        line-height: var(--line-height-16);
       }
       p {
-        margin: 10px 0;
+        margin: var(--spacing-10) 0;
       }
       ul, ol {
-        margin: 10px 0 16px;
-        padding-left: 24px;
+        margin: var(--spacing-10) 0 var(--spacing-16);
+        padding-left: var(--spacing-24);
       }
       table {
         width: 100%;
-        margin: 16px 0;
+        margin: var(--spacing-16) 0;
         border-collapse: collapse;
         overflow-wrap: anywhere;
       }
       th, td {
-        border: 1px solid var(--line);
-        padding: 10px;
+        border: var(--border-width-1) solid var(--viewer-line);
+        padding: var(--spacing-10);
         text-align: left;
         vertical-align: top;
-        line-height: 1.45;
+        line-height: var(--line-height-14);
       }
       th {
-        background: #f7f2e8;
+        background: var(--background-dim2);
       }
       pre {
         overflow: auto;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 14px;
-        background: #f7f2e8;
+        border: var(--border-width-1) solid var(--viewer-line);
+        border-radius: var(--border-radius-8);
+        padding: var(--spacing-14);
+        background: var(--background-dim2);
       }
       code {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-family: var(--font-family-geist-mono);
         font-size: 0.92em;
       }
       a {
-        color: var(--blue);
-        font-weight: 750;
+        color: var(--action-link-fg);
+        font-weight: var(--font-weight-700);
       }
       @media (max-width: 640px) {
         .viewer-shell {
@@ -1018,11 +1595,19 @@ function handleRunViewer(req, res) {
           align-items: stretch;
           flex-direction: column;
         }
-        .back-link {
-          text-align: center;
+        .viewer-actions,
+        .viewer-action-stack {
+          align-items: stretch;
+          justify-items: stretch;
+        }
+        .viewer-actions {
+          flex-direction: column;
+        }
+        .viewer-actions .viewer-button {
+          width: 100%;
         }
         main {
-          padding: 18px;
+          padding: var(--spacing-20);
         }
       }
     </style>
@@ -1034,10 +1619,49 @@ function handleRunViewer(req, res) {
           <h1>Agent Debate Run</h1>
           <p>${escapeHtml(file)}</p>
         </div>
-        <a class="back-link" href="/">Back to Debate</a>
+        <div class="viewer-action-stack">
+          <div class="viewer-actions">
+            <button id="openRunFolder" class="viewer-button" type="button" data-file="${escapeHtml(file)}">
+              <span class="button__icon icon" aria-hidden="true">folder_open</span>
+              <span class="button__label">Open Folder</span>
+            </button>
+            <a class="viewer-button" href="/">
+              <span class="button__label">Back to Debate</span>
+            </a>
+          </div>
+          <span class="folder-status" id="openFolderStatus" aria-live="polite"></span>
+        </div>
       </header>
       <main>${renderMarkdown(markdown)}</main>
     </div>
+    <script type="module">
+      const openRunFolderButton = document.querySelector("#openRunFolder");
+      const openFolderStatus = document.querySelector("#openFolderStatus");
+
+      openRunFolderButton.addEventListener("click", async () => {
+        openRunFolderButton.disabled = true;
+        openFolderStatus.textContent = "Opening folder...";
+
+        try {
+          const response = await fetch("/api/runs/open-folder", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ file: openRunFolderButton.dataset.file }),
+          });
+          const data = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(data.error || "Could not open folder.");
+          }
+
+          openFolderStatus.textContent = "Folder opened.";
+        } catch (error) {
+          openFolderStatus.textContent = error.message || "Could not open folder.";
+        } finally {
+          openRunFolderButton.disabled = false;
+        }
+      });
+    </script>
   </body>
 </html>`,
     );
@@ -1045,7 +1669,7 @@ function handleRunViewer(req, res) {
     sendHtml(
       res,
       error.message === "Run file not found." ? 404 : 400,
-      `<!doctype html><html lang="ko"><meta charset="utf-8" /><title>Run not found</title><body><p>${escapeHtml(error.message)}</p><p><a href="/">Back to Debate</a></p></body></html>`,
+      `<!doctype html><html lang="en"><meta charset="utf-8" /><title>Run not found</title><body><p>${escapeHtml(error.message)}</p><p><a href="/">Back to Debate</a></p></body></html>`,
     );
   }
 }
@@ -1098,11 +1722,62 @@ function serveStatic(req, res) {
   const ext = extname(fullPath);
   res.writeHead(200, {
     "Content-Type": mimeTypes[ext] || "application/octet-stream",
+    "Cache-Control": "no-store",
+  });
+  createReadStream(fullPath).pipe(res);
+}
+
+function serveDesignSystem(req, res) {
+  let requested = "";
+  try {
+    const url = new URL(req.url, `http://${host}`);
+    requested = decodeURIComponent(url.pathname.replace(/^\/nanaos\/?/, ""));
+  } catch {
+    sendJson(res, 400, { error: "Invalid URL." });
+    return;
+  }
+
+  const fullPath = resolve(join(designSystemDir, requested));
+  const isAllowed = designSystemStaticRoots.some((staticRoot) => (
+    fullPath === staticRoot || fullPath.startsWith(staticRoot + sep)
+  ));
+
+  if (!isAllowed) {
+    sendJson(res, 403, { error: "Forbidden." });
+    return;
+  }
+
+  if (!existsSync(fullPath)) {
+    sendJson(res, 404, {
+      error: "nanaOS design-system asset not found.",
+      designSystemPath: designSystemDir,
+    });
+    return;
+  }
+
+  const ext = extname(fullPath);
+  res.writeHead(200, {
+    "Content-Type": mimeTypes[ext] || "application/octet-stream",
+    "Cache-Control": "no-store",
   });
   createReadStream(fullPath).pipe(res);
 }
 
 createServer((req, res) => {
+  if (!requestHostIsSafe(req)) {
+    sendJson(res, 403, { error: "Host header is not allowed." });
+    return;
+  }
+
+  // CSRF protection: any state-changing API call must originate from the local
+  // UI. A cross-site page can send the request, but its Origin will not match,
+  // so reconfiguring agents or starting a debate (which spawns commands) is
+  // blocked. Non-browser clients send no Origin and are allowed through.
+  if (req.method === "POST" && req.url.startsWith("/api/") && !requestMatchesUiOrigin(req)) {
+    sendJson(res, 403, { error: "Request origin is not allowed." });
+    return;
+  }
+
   if (req.method === "GET" && req.url === "/api/status") {
     const agents = readAgents();
     sendJson(res, 200, { agents: getStatus(agents), defaultProjectPath });
@@ -1116,6 +1791,16 @@ createServer((req, res) => {
 
   if (req.method === "GET" && req.url === "/api/runs") {
     handleRuns(res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url === "/api/runs/open-folder") {
+    handleOpenRunFolder(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/api/skills")) {
+    handleSkills(req, res);
     return;
   }
 
@@ -1141,6 +1826,11 @@ createServer((req, res) => {
 
   if (req.method === "POST" && req.url === "/api/project") {
     handleProject(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url.startsWith("/nanaos/")) {
+    serveDesignSystem(req, res);
     return;
   }
 

@@ -1,10 +1,15 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Agent Debate</title>
     <link rel="icon" href="/assets/debate.png" type="image/png" />
+    <!-- Built-in neutral theme: makes the app self-contained on a fresh clone. -->
+    <link rel="stylesheet" href="/theme.css" />
+    <!-- Optional design-system override. Served from NANAOS_DESIGN_SYSTEM_PATH when
+         mounted; 404s harmlessly otherwise. Loads after theme.css so it wins locally. -->
+    <link rel="stylesheet" href="/nanaos/dist/nanaos.css" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -14,15 +19,25 @@
           <img class="mark" src="/assets/debate.png" alt="Debate" />
           <div class="brand-copy">
             <h1>Agent Debate</h1>
-            <p>nanaOS-flavored local debate room for CLI agents</p>
+            <p data-i18n="brand.subtitle">nanaOS-flavored local debate room for CLI agents</p>
           </div>
         </div>
 
         <div class="topbar-status">
-          <span id="debateStatus" class="tag debate-status is-ready" aria-live="polite">Ready</span>
-          <button class="button button--outlined button--14 button--round button--icon-start" id="refreshStatus" type="button">
-            <span class="button__icon" aria-hidden="true">Refresh</span>
-            <span class="button__label">Status</span>
+          <span id="debateStatus" class="tag tag--12 tag--rectangle debate-status is-ready" aria-live="polite">Ready</span>
+          <button id="refreshStatus" class="button button--outlined button--14 button--round button--icon-start" type="button">
+            <span class="button__icon icon" aria-hidden="true">refresh</span>
+            <span class="button__label" data-i18n="refresh.label">Status</span>
+          </button>
+          <button
+            id="openSettings"
+            class="button button--outlined button--14 button--circle button--icon-only settings-trigger"
+            type="button"
+            aria-label="Settings"
+            data-i18n-aria-label="settings.open"
+          >
+            <span class="button__icon icon" aria-hidden="true">settings</span>
+            <span class="visually-hidden" data-i18n="settings.open">Settings</span>
           </button>
         </div>
       </header>
@@ -31,24 +46,24 @@
         <aside class="setup-rail">
           <section class="panel project-panel" aria-labelledby="project-title">
             <div class="panel-head">
-              <div>
-                <h2 id="project-title">Project</h2>
-                <p>Agents run from this folder.</p>
+              <div class="title-body">
+                <h2 id="project-title" class="title-body__title" data-i18n="project.title">Project</h2>
+                <p class="title-body__body" data-i18n="project.subtitle">Agents run from this folder.</p>
               </div>
-              <span class="tag tag--12 tag--rectangle">local</span>
+              <span class="tag tag--12 tag--rectangle" data-i18n="project.local">local</span>
             </div>
 
             <label class="input-field">
-              <span class="input-label">Path</span>
-              <input id="projectPath" class="input" data-density="12" type="text" placeholder="/path/to/project" />
+              <span class="input-label" data-i18n="project.path">Path</span>
+              <input id="projectPath" class="input" data-density="12" type="text" placeholder="/path/to/project" data-i18n-placeholder="project.pathPlaceholder" />
             </label>
 
             <div class="button-row">
-              <button class="button button--outlined button--14 button--round" id="useProjectButton" type="button">
-                <span class="button__label">Use Location</span>
+              <button id="useProjectButton" class="button button--outlined button--14 button--round" type="button">
+                <span class="button__label" data-i18n="project.useLocation">Use Location</span>
               </button>
-              <button class="button button--filled button--14 button--round" id="runAppButton" type="button">
-                <span class="button__label">Run App</span>
+              <button id="runAppButton" class="button button--filled button--14 button--round" type="button">
+                <span class="button__label" data-i18n="app.run">Run App</span>
               </button>
             </div>
 
@@ -58,12 +73,12 @@
 
           <section class="panel agent-panel" aria-labelledby="agents-title">
             <div class="panel-head">
-              <div>
-                <h2 id="agents-title">Agent Connections</h2>
-                <p>Connect the CLIs you want in the debate.</p>
+              <div class="title-body">
+                <h2 id="agents-title" class="title-body__title" data-i18n="agents.title">Agent Connections</h2>
+                <p class="title-body__body" data-i18n="agents.subtitle">Connect the CLIs you want in the debate.</p>
               </div>
-              <button class="button button--plain button--14 button--round" id="addAgentButton" type="button">
-                <span class="button__label">Add</span>
+              <button id="addAgentButton" class="button button--plain button--14 button--round" type="button">
+                <span class="button__label" data-i18n="agents.add">Add</span>
               </button>
             </div>
 
@@ -73,23 +88,23 @@
               <input id="agentId" name="id" type="hidden" />
 
               <label class="input-field">
-                <span class="input-label">Name</span>
-                <input id="agentName" class="input" data-density="12" name="name" type="text" placeholder="Codex" required />
+                <span class="input-label" data-i18n="agents.name">Name</span>
+                <input id="agentName" class="input" data-density="12" name="name" type="text" placeholder="Codex" data-i18n-placeholder="agents.namePlaceholder" required />
               </label>
 
               <label class="input-field">
-                <span class="input-label">Command</span>
-                <input id="agentCommand" class="input" data-density="12" name="command" type="text" placeholder="codex" required />
+                <span class="input-label" data-i18n="agents.command">Command</span>
+                <input id="agentCommand" class="input" data-density="12" name="command" type="text" placeholder="codex" data-i18n-placeholder="agents.commandPlaceholder" required />
               </label>
 
               <label class="textarea-field">
-                <span class="textarea-label">Arguments JSON</span>
-                <textarea id="agentArgs" class="textarea mono" name="args" rows="5" spellcheck="false" placeholder='["exec", "--skip-git-repo-check", "-"]'></textarea>
+                <span class="textarea-label" data-i18n="agents.args">Arguments JSON</span>
+                <textarea id="agentArgs" class="textarea mono" name="args" rows="5" spellcheck="false" placeholder='["exec", "--skip-git-repo-check", "-"]' data-i18n-placeholder="agents.argsPlaceholder"></textarea>
               </label>
 
               <div class="agent-form-grid">
                 <label class="input-field">
-                  <span class="input-label">Input mode</span>
+                  <span class="input-label" data-i18n="agents.inputMode">Input mode</span>
                   <select id="agentInput" class="input" data-density="12" name="input">
                     <option value="stdin">stdin</option>
                     <option value="stdin-last-message-file">stdin + last message file</option>
@@ -99,18 +114,18 @@
 
                 <label class="switch-field">
                   <input id="agentEnabled" name="enabled" type="checkbox" checked />
-                  <span>Enabled</span>
+                  <span data-i18n="agents.enabled">Enabled</span>
                 </label>
               </div>
 
               <p class="supporting" id="agentNote">Use {prompt} or {outputFile} in args when a CLI needs placeholders.</p>
 
               <div class="button-row">
-                <button class="button button--filled button--14 button--round" id="saveAgentButton" type="submit">
-                  <span class="button__label">Save Agent</span>
+                <button id="saveAgentButton" class="button button--filled button--14 button--round" type="submit">
+                  <span class="button__label" data-i18n="agents.save">Save Agent</span>
                 </button>
-                <button class="button button--outlined button--14 button--round" id="cancelAgentButton" type="button">
-                  <span class="button__label">Cancel</span>
+                <button id="cancelAgentButton" class="button button--outlined button--14 button--round" type="button">
+                  <span class="button__label" data-i18n="common.cancel">Cancel</span>
                 </button>
               </div>
             </form>
@@ -118,11 +133,37 @@
 
           <section class="panel runs-panel" aria-labelledby="runs-title">
             <div class="panel-head">
-              <div>
-                <h2 id="runs-title">Runs</h2>
-                <p>Recent debate transcripts.</p>
+              <div class="title-body" data-title-size="14">
+                <h2 id="runs-title" class="title-body__title" data-i18n="runs.title">Debates</h2>
+                <p class="title-body__body" data-i18n="runs.subtitle">Recent debate transcripts.</p>
               </div>
             </div>
+            <form class="run-search" id="runSearchForm" action="/api/runs" method="get" role="search" aria-label="Search debate transcripts" data-i18n-aria-label="runs.searchAria">
+              <label class="input-field run-search__field" for="runSearch" data-label-hidden>
+                <span class="input-label input-label--visually-hidden" data-i18n="runs.searchLabel">Search debates</span>
+                <span class="input-control" data-density="12" data-icon="search">
+                  <span class="input-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="m21 21-4.35-4.35M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" />
+                    </svg>
+                  </span>
+                  <input
+                    id="runSearch"
+                    class="input input--round"
+                    data-density="12"
+                    name="q"
+                    type="search"
+                    placeholder="Search debates"
+                    data-i18n-placeholder="runs.searchPlaceholder"
+                    autocomplete="off"
+                    spellcheck="false"
+                    aria-controls="runList"
+                    aria-describedby="runSearchStatus"
+                  />
+                </span>
+              </label>
+              <p class="visually-hidden" id="runSearchStatus" aria-live="polite"></p>
+            </form>
             <div class="run-list" id="runList"></div>
           </section>
         </aside>
@@ -130,84 +171,133 @@
         <main class="debate-main">
           <section class="workflow-band" aria-labelledby="workflow-title">
             <div class="panel-head">
-              <div>
-                <h2 id="workflow-title">Workflow</h2>
-                <p>Designed for quick maintainer decisions before coding.</p>
+              <div class="title-body">
+                <h2 id="workflow-title" class="title-body__title" data-i18n="workflow.title">Workflow</h2>
+                <p class="title-body__body" data-i18n="workflow.subtitle">Designed for quick maintainer decisions before coding.</p>
               </div>
               <span id="runState" class="state">Ready</span>
             </div>
-            <ol class="workflow-list">
-              <li class="workflow-item">
-                <span class="workflow-index">1</span>
-                <span>Connect agents</span>
-              </li>
-              <li class="workflow-item">
-                <span class="workflow-index">2</span>
-                <span>Frame topic</span>
-              </li>
-              <li class="workflow-item">
-                <span class="workflow-index">3</span>
-                <span>Run 3 debate rounds</span>
-              </li>
-              <li class="workflow-item">
-                <span class="workflow-index">4</span>
-                <span>Synthesize decision</span>
-              </li>
-            </ol>
+            <div
+              class="list workflow-list"
+              id="workflowList"
+              data-anatomy="title-body"
+              data-size="14"
+              data-density="12"
+              data-icon="both"
+              data-width="full"
+              data-frame="none"
+              data-divider="visible"
+              data-emphasis="base"
+              data-border-radius="0"
+              role="list"
+              aria-label="Debate workflow"
+              data-i18n-aria-label="workflow.listLabel"
+            ></div>
+            <p class="supporting workflow-status" id="workflowStatus" aria-live="polite"></p>
           </section>
 
           <section class="debate-stage" aria-labelledby="debate-title">
             <div class="panel-head">
               <div>
-                <h2 id="debate-title">Debate Room</h2>
-                <p>Live output streams into the transcript.</p>
+                <h2 id="debate-title" data-i18n="debate.title">Debate Room</h2>
+                <p data-i18n="debate.subtitle">Live output streams into the transcript.</p>
               </div>
             </div>
-            <div class="transcript" id="transcript" aria-live="polite"></div>
+            <div class="transcript" id="transcript" aria-live="polite" data-empty-label="No debate yet"></div>
           </section>
         </main>
 
         <aside class="control-rail">
           <form class="composer" id="debateForm" action="/api/debate" method="post">
             <div class="panel-head">
-              <div>
-                <h2>Composer</h2>
-                <p>Topic, context, and output language.</p>
+              <div class="title-body">
+                <h2 class="title-body__title" data-i18n="composer.title">Composer</h2>
+                <p class="title-body__body" data-i18n="composer.subtitle">Topic and context.</p>
               </div>
             </div>
 
             <label class="textarea-field">
-              <span class="textarea-label">Topic</span>
-              <textarea id="topic" class="textarea" name="topic" rows="5" placeholder="예: 이 API 이름을 start/end로 단순화해도 될까?" required></textarea>
+              <span class="textarea-label" data-i18n="composer.topic">Topic</span>
+              <textarea id="topic" class="textarea" name="topic" rows="5" placeholder="Example: Can this API name be simplified to start/end?" data-i18n-placeholder="composer.topicPlaceholder" required></textarea>
             </label>
 
-            <label class="input-field">
-              <span class="input-label">Language</span>
-              <select id="language" class="input" data-density="12" name="language">
-                <option value="Korean">Korean</option>
-                <option value="English">English</option>
-                <option value="Japanese">Japanese</option>
-              </select>
-            </label>
+            <div class="skill-picker">
+              <label class="input-field" for="skillSearch">
+                <span class="input-label" data-i18n="skills.label">Skills</span>
+                <input
+                  id="skillSearch"
+                  class="input"
+                  data-density="12"
+                  name="skills"
+                  type="text"
+                  placeholder="/modern"
+                  data-i18n-placeholder="skills.placeholder"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded="false"
+                  aria-controls="skillResults"
+                  aria-describedby="skillAssist"
+                />
+              </label>
+              <div class="skill-results" id="skillResults" role="listbox" hidden></div>
+              <div class="skill-chips" id="selectedSkills" aria-live="polite"></div>
+              <p class="visually-hidden" id="skillAssist" data-i18n="skills.assist">Type a slash command or skill name, then choose a skill from the results.</p>
+            </div>
 
             <label class="textarea-field">
-              <span class="textarea-label">Context</span>
-              <textarea id="context" class="textarea" name="context" rows="8" placeholder="참고할 초안, 링크 메모, 요구사항을 붙여넣기"></textarea>
+              <span class="textarea-label" data-i18n="composer.context">Context</span>
+              <textarea id="context" class="textarea" name="context" rows="8" placeholder="Paste drafts, link notes, and requirements to reference" data-i18n-placeholder="composer.contextPlaceholder"></textarea>
             </label>
 
+            <input id="contextFile" class="visually-hidden" type="file" accept=".txt,.md,.markdown,image/png,image/jpeg,image/webp,image/gif" multiple />
             <div class="button-row">
-              <label class="button button--outlined button--14 button--round file-button">
-                <input id="contextFile" type="file" accept=".txt,.md,.markdown" />
-                <span class="button__label">Import</span>
-              </label>
-              <button class="button button--filled button--14 button--round" id="startButton" type="submit">
-                <span class="button__label">Start Debate</span>
+              <button id="contextImportButton" class="button button--outlined button--14 button--round" type="button">
+                <span class="button__label" data-i18n="composer.import">Import</span>
+              </button>
+              <button id="startButton" class="button button--filled button--14 button--round" type="submit">
+                <span class="button__label" data-i18n="composer.start">Start Debate</span>
               </button>
             </div>
+            <p class="supporting import-status" id="contextImportStatus" aria-live="polite"></p>
           </form>
         </aside>
       </div>
     </div>
+
+    <dialog class="settings-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
+      <form class="settings-panel" method="dialog">
+        <div class="settings-head">
+          <h2 id="settingsTitle" data-i18n="settings.title">Settings</h2>
+          <button
+            class="button button--plain button--14 button--circle button--icon-only"
+            id="settingsClose"
+            type="button"
+            aria-label="Close settings"
+            data-i18n-aria-label="settings.close"
+          >
+            <span class="button__icon icon" aria-hidden="true">close</span>
+          </button>
+        </div>
+        <div class="settings-body">
+          <label class="input-field">
+            <span class="input-label" data-i18n="settings.language">Language</span>
+            <select id="settingsLanguageSelect" class="input" data-density="12"></select>
+          </label>
+          <label class="input-field">
+            <span class="input-label" data-i18n="settings.theme">Theme</span>
+            <select id="settingsThemeSelect" class="input" data-density="12"></select>
+          </label>
+        </div>
+        <div class="settings-actions">
+          <button class="button button--filled button--14 button--round settings-done" id="settingsDone" type="button">
+            <span class="button__label" data-i18n="settings.done">Done</span>
+          </button>
+        </div>
+      </form>
+    </dialog>
 
     <script src="/app.js" type="module"></script>
   </body>
