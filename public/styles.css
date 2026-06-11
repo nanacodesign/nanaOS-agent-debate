@@ -55,7 +55,7 @@
 
   .app-shell {
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
     min-block-size: 100dvh;
   }
 
@@ -127,9 +127,10 @@
     display: grid;
     grid-template-columns: 320px minmax(0, 1fr) 360px;
     gap: var(--spacing-16);
-    block-size: calc(100dvh - 72px - 48px);
+    block-size: calc(100dvh - 72px - 56px);
     min-block-size: 0;
     padding: var(--spacing-16);
+    padding-bottom: 0;
     overflow: hidden;
   }
 
@@ -825,6 +826,20 @@
       grid-template-columns: 1fr;
       align-items: stretch;
     }
+
+    .app-footer {
+      flex-direction: column;
+      gap: var(--spacing-12);
+      align-items: center;
+      padding-block: var(--spacing-16);
+      text-align: center;
+    }
+
+    .app-footer__info {
+      flex-direction: column;
+      gap: var(--spacing-8);
+      align-items: center;
+    }
   }
 
   /* In dark mode, form inputs and outlined lists nested inside a surface container
@@ -940,53 +955,99 @@
   }
 
   .github-star-container {
-    display: flex;
+    display: flex !important;
+    align-items: center !important;
+    gap: var(--spacing-12);
+    color: var(--foreground-dim1);
+    font-family: var(--font-family-mono, "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-size: var(--font-size-14);
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  /* Star button mirrors the countdown project's .star__button: square 8px frame,
+   * thin outline, and a gold fill on hover that flips the label dark. */
+  .github-star-button {
+    display: inline-flex;
     align-items: center;
     gap: var(--spacing-8);
-    color: var(--foreground-dim1);
-    font-size: var(--font-size-12);
-    font-weight: var(--font-weight-700);
-    white-space: nowrap;
+    padding: var(--spacing-8) var(--spacing-12) var(--spacing-8) var(--spacing-8);
+    border: var(--border-width-1) solid var(--foreground-default);
+    border-radius: var(--border-radius-8);
+    color: var(--foreground-default);
+    text-decoration: none;
+    font-family: inherit;
+    font-size: var(--font-size-14);
+    font-weight: var(--font-weight-500);
+    line-height: 1;
+    transition: background-color var(--enter-quick), border-color var(--enter-quick), color var(--enter-quick);
+  }
+
+  .github-star-button:hover,
+  .github-star-button:focus-visible {
+    background: #e2b24c;
+    border-color: transparent;
+    color: #262624;
+  }
+
+  .github-star-button__icon {
+    display: block;
+    width: 16px;
+    height: 16px;
+    color: inherit;
   }
 
   .github-star-text {
     display: flex;
     align-items: center;
-    gap: var(--spacing-4);
+    gap: var(--spacing-6);
   }
 
-  .github-star-dot {
+  /* Separator rides on the count, so it only appears once a number is loaded
+   * (the count starts hidden) — no dangling dot, matching the reference. */
+  .github-star-count {
+    color: var(--foreground-dim1);
+    opacity: 0.7;
+  }
+
+  .github-star-count::before {
+    content: "·";
+    margin-right: var(--spacing-6);
     color: var(--foreground-dim3);
   }
 
-  .github-star-count {
-    color: var(--foreground-default);
-    font-weight: var(--font-weight-800);
-  }
-
-  .github-star-button.button {
-    text-decoration: none;
-  }
-
   .app-footer {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: var(--spacing-16) !important;
+    height: 56px !important;
+    padding: 0 var(--spacing-20) !important;
+    border-block-start: var(--border-width-1) solid var(--app-line) !important;
+    background: color-mix(in oklab, var(--app-panel) 94%, transparent) !important;
+    color: var(--foreground-dim1) !important;
+    font-family: var(--font-family-mono, "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace) !important;
+    font-size: var(--font-size-14) !important;
+    font-weight: var(--font-weight-500) !important;
+    line-height: 1 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* "made by nana · CC BY 4.0" + social — mirrors the countdown project's .nana cluster. */
+  .app-footer__info {
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: var(--spacing-16);
-    min-block-size: 48px;
-    padding: var(--spacing-12) var(--spacing-20);
-    border-block-start: var(--border-width-1) solid var(--app-line);
-    background: color-mix(in oklab, var(--app-panel) 94%, transparent);
-    color: var(--foreground-dim2);
-    font-size: var(--font-size-12);
-    font-weight: var(--font-weight-700);
-    width: 100%;
   }
 
   .app-footer__credit {
     display: flex;
     align-items: center;
     gap: var(--spacing-6);
+    color: var(--foreground-dim1);
+    font-size: var(--font-size-14);
+    line-height: 1;
   }
 
   .app-footer__links {
@@ -998,7 +1059,8 @@
   .app-footer__link {
     display: inline-flex;
     align-items: center;
-    color: var(--foreground-dim2);
+    justify-content: center;
+    color: var(--foreground-dim1);
     text-decoration: none;
     transition: color var(--enter-quick);
   }
@@ -1007,13 +1069,17 @@
     color: var(--foreground-default);
   }
 
+  /* LinkedIn keeps its brand-tinted hover, matched to the countdown project. */
+  .app-footer__link--linkedin:hover {
+    color: #65a9ef;
+  }
+
   .app-footer__link .icon {
-    font-size: 16px;
+    font-size: 18px;
   }
 
   .app-footer__link .icon-svg {
-    display: inline-block;
-    vertical-align: middle;
+    display: block;
   }
 
   /* .typography-display-48 {
@@ -1023,4 +1089,23 @@
     font-weight: light-dark(var(--font-weight-600), var(--font-weight-500)) !important;
     letter-spacing: light-dark(var(--letter-spacing-0), var(--letter-spacing-012)) !important;
   } */
+}
+
+/* Unlayered overrides to enforce vertical centering of footer components */
+.app-footer {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  height: 56px !important;
+  padding: 0 var(--spacing-20) !important;
+}
+
+.github-star-container {
+  display: flex !important;
+  align-items: center !important;
+}
+
+.app-footer__info {
+  display: flex !important;
+  align-items: center !important;
 }

@@ -10,6 +10,8 @@ The app is designed for maintainers who want a fast second opinion before changi
 
 ![Agent Debate mark](public/assets/debate.png)
 
+![Footer screenshot](public/assets/footer.png)
+
 ## Highlights
 
 - Run a structured 3-round debate across enabled agents.

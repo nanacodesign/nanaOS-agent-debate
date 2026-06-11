@@ -10,7 +10,7 @@
     <!-- Optional design-system override. Served from NANAOS_DESIGN_SYSTEM_PATH when
          mounted; 404s harmlessly otherwise. Loads after theme.css so it wins locally. -->
     <link rel="stylesheet" href="/nanaos/dist/nanaos.css" />
-    <link rel="stylesheet" href="/styles.css?v=1.1" />
+    <link rel="stylesheet" href="/styles.css?v=1.2" />
   </head>
   <body data-surface>
     <div class="app-shell">
@@ -21,27 +21,6 @@
         </div>
 
         <div class="topbar-status">
-          <!-- GitHub Star / Promotion -->
-          <div class="github-star-container">
-            <a
-              id="githubStarLink"
-              href="https://github.com/nanacodesign/nanaOS-agent-debate"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="button button--outlined button--14 button--round button--icon-start github-star-button"
-            >
-              <span class="button__icon" aria-hidden="true">
-                <span class="icon icon--symbol icon--style-filled" style="color: var(--status-warning-fg, #f4b400);">star</span>
-              </span>
-              <span class="button__label" data-i18n="app.header.starLabel">Star</span>
-            </a>
-            <span class="github-star-text">
-              <span data-i18n="app.header.starText">cheer this project on</span>
-              <span class="github-star-dot" aria-hidden="true">·</span>
-              <span id="starCount" class="github-star-count" style="display: none;">0</span>
-            </span>
-          </div>
-
           <span id="debateStatus" class="debate-status is-ready" aria-live="polite">
             <span class="badge badge--unavailable" data-kind="dot" data-tone="unavailable" data-placement="top-end" aria-hidden="true"></span>
             <span class="debate-status__label">Ready</span>
@@ -525,19 +504,43 @@
         </aside>
       </div>
       <footer class="app-footer" data-surface>
-        <span class="app-footer__credit">
-          <span data-i18n="app.footer.madeBy">made by nana · CC BY 4.0</span>
-        </span>
-        <span class="app-footer__links">
-          <a href="https://nanacodesign.com/" target="_blank" rel="noopener noreferrer" class="app-footer__link" aria-label="Website">
-            <span class="icon" aria-hidden="true">language</span>
-          </a>
-          <a href="https://www.linkedin.com/in/nanacodesign/" target="_blank" rel="noopener noreferrer" class="app-footer__link" aria-label="LinkedIn">
-            <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-              <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
+        <!-- GitHub Star / Promotion -->
+        <div class="github-star-container">
+          <a
+            id="githubStarLink"
+            href="https://github.com/nanacodesign/nanaOS-agent-debate"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="github-star-button"
+          >
+            <svg class="github-star-button__icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+              <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
             </svg>
+            <span class="github-star-button__label" data-i18n="app.header.starLabel">Star</span>
           </a>
-        </span>
+          <span class="github-star-text">
+            <span data-i18n="app.header.starText">every star fuels this build</span>
+            <span id="starCount" class="github-star-count" style="display: none;">0</span>
+          </span>
+        </div>
+
+        <div class="app-footer__info">
+          <span class="app-footer__credit">
+            <span data-i18n="app.footer.madeBy">made by nana · CC BY 4.0</span>
+          </span>
+          <span class="app-footer__links">
+            <a href="https://nanacodesign.com/" target="_blank" rel="noopener noreferrer" class="app-footer__link" aria-label="Website">
+              <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.93 6h-2.95a15.7 15.7 0 0 0-1.39-3.56A8.03 8.03 0 0 1 18.92 8ZM12 4.04c.83 1.2 1.48 2.53 1.91 3.96h-3.82c.43-1.43 1.08-2.76 1.91-3.96ZM4.26 14a7.82 7.82 0 0 1 0-4h3.38a16.5 16.5 0 0 0-.14 2c0 .68.05 1.35.14 2H4.26Zm.82 2h2.95c.32 1.25.78 2.45 1.39 3.56A7.99 7.99 0 0 1 5.08 16Zm2.95-8H5.08a7.99 7.99 0 0 1 4.33-3.56A15.7 15.7 0 0 0 8.03 8ZM12 19.96c-.83-1.2-1.48-2.53-1.91-3.96h3.82c-.43 1.43-1.08 2.76-1.91 3.96ZM14.34 14H9.66c-.1-.65-.16-1.32-.16-2 0-.68.06-1.35.16-2h4.68c.1.65.16 1.32.16 2 0 .68-.06 1.35-.16 2Zm.25 5.56c.6-1.11 1.07-2.31 1.39-3.56h2.95a8.03 8.03 0 0 1-4.34 3.56ZM16.36 14c.09-.65.14-1.32.14-2 0-.68-.05-1.35-.14-2h3.38a7.82 7.82 0 0 1 0 4h-3.38Z" />
+              </svg>
+            </a>
+            <a href="https://www.linkedin.com/in/nanacodesign/" target="_blank" rel="noopener noreferrer" class="app-footer__link app-footer__link--linkedin" aria-label="LinkedIn">
+              <svg class="icon-svg" viewBox="0 0 23 23" width="16" height="16" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19.598 19.598h-3.408v-5.337c0-1.273-.023-2.91-1.773-2.91-1.775 0-2.046 1.386-2.046 2.818v5.43H8.963V8.622h3.272v1.5h.045c.328-.56.8-1.02 1.37-1.333a3.77 3.77 0 0 1 1.858-.44c3.454 0 4.091 2.272 4.091 5.228v5.02ZM5.117 7.122a1.978 1.978 0 1 1 0-3.957 1.978 1.978 0 0 1 0 3.957Zm1.704 12.476H3.41V8.622h3.411v10.976ZM21.297.002H1.697A1.69 1.69 0 0 0 0 1.66v19.68a1.69 1.69 0 0 0 1.697 1.66h19.6a1.69 1.69 0 0 0 1.703-1.66V1.66A1.69 1.69 0 0 0 21.297.002Z"/>
+              </svg>
+            </a>
+          </span>
+        </div>
       </footer>
     </div>
 
