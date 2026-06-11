@@ -10,7 +10,7 @@ The app is designed for maintainers who want a fast second opinion before changi
 
 ![Agent Debate mark](public/assets/debate.png)
 
-![Demo Video](public/assets/nanaos-agent-debate.mp4)
+![Demo Video](public/assets/nanaos-agent-debate.gif)
 
 ![Main Dashboard](public/assets/main-dashboard.png)
 
