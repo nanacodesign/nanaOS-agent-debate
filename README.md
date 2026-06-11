@@ -8,7 +8,7 @@ nanaOS Agent Debate is a local-first debate room for comparing answers from mult
 
 The app is designed for maintainers who want a fast second opinion before changing code, APIs, design-system contracts, or project direction.
 
-![Agent Debate mark](public/assets/debate.png)
+<img src="public/assets/debate.png" alt="Agent Debate mark" width="300" />
 
 ![Demo Video](public/assets/nanaos-agent-debate.gif)
 
