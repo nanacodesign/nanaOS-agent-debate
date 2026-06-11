@@ -168,13 +168,6 @@ This project is being prepared as an open-source local tool for maintainers and 
 - **Website**: [https://nanacodesign.com/](https://nanacodesign.com/)
 - **LinkedIn**: [https://www.linkedin.com/in/nanacodesign/](https://www.linkedin.com/in/nanacodesign/)
 
-## Contributors
-
-- **nana** (Creator & Lead Developer)
-- **Gemini** (AI Pair Programmer - UI & Rebranding)
-- **Claude** (AI Collaborator)
-- **Codex** (AI Collaborator - Agent Integration)
-
 ## License
 
 MIT
