@@ -121,7 +121,7 @@
                       <span class="hover-card__popup" data-surface>
                         <span class="title-body" data-title-size="14">
                           <strong class="title-body__title" data-i18n="agents.type">Connection type</strong>
-                          <span class="title-body__body" data-i18n="agents.typeTooltip">CLI command runs a local executable. API endpoint calls an OpenAI-compatible chat completions URL with no extra install.</span>
+                          <span class="title-body__body" data-i18n="agents.typeTooltip">CLI command runs a coding CLI under its own login, so it uses your existing plan — no API key. API endpoint calls an OpenAI-compatible URL: a local server like Ollama (free) or a provider with an API key (billed per token).</span>
                         </span>
                       </span>
                     </span>
@@ -138,7 +138,7 @@
 
               <div class="agent-presets" data-agent-field="api" hidden>
                 <span class="input-label" data-i18n="agents.presets">Presets</span>
-                <div class="button-row">
+                <div class="preset-row">
                   <button class="button button--outlined button--14 button--round" type="button" data-agent-preset="ollama">
                     <span class="button__label">Ollama</span>
                   </button>

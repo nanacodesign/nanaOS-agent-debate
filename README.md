@@ -41,11 +41,14 @@ You can also run without a copied config file. In that case, the app starts with
 
 ## Connect Agents
 
-Open **Agent Connections** in the app and add or edit each agent. Two connection types are supported.
+Open **Agent Connections** in the app and add or edit each agent. Two connection types are supported — pick by how you want to pay:
+
+- **CLI command** — runs a coding CLI under its own login, so usage counts against the plan you already have (a Claude or ChatGPT subscription, or Gemini CLI's free personal tier). No API key, no per-token billing.
+- **API endpoint** — calls an OpenAI-compatible URL directly: free with a local server such as Ollama, or billed per token with a provider API key.
 
 ### CLI command
 
-Runs a local executable, such as the official `codex`, `claude`, or `gemini` CLIs.
+Runs a local executable, such as the official `codex`, `claude`, or `gemini` CLIs, using each CLI's own login and plan.
 
 - `Name`: label shown in the debate UI.
 - `Command`: executable name, for example `codex`, `claude`, or `gemini`.

@@ -205,6 +205,16 @@
     inline-size: 100%;
   }
 
+  /* Preset chips size to their label and wrap, unlike .button-row, whose
+   * children stretch equally (and ellipsize narrow rails) and which stacks
+   * into a single column below 820px. */
+  .preset-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-8);
+  }
+
   .is-running.button {
     --button-background: var(--status-error);
     --button-hover-background: #a60000;
@@ -257,7 +267,6 @@
   .skill-picker .combobox__popup {
     width: 100% !important;
     max-width: 100% !important;
-    box-sizing: border-box !important;
     overflow-x: hidden !important;
   }
 
@@ -266,7 +275,6 @@
     flex-direction: column !important;
     width: 100% !important;
     max-width: 100% !important;
-    box-sizing: border-box !important;
   }
 
   .skill-option {
@@ -275,7 +283,6 @@
     justify-content: space-between !important;
     gap: var(--spacing-10) !important;
     padding: var(--spacing-8) var(--spacing-16) !important;
-    box-sizing: border-box !important;
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;

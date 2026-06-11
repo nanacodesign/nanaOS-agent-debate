@@ -1150,7 +1150,7 @@ function renderAgents(nextAgents) {
           return `
             <article class="card card--outlined agent-card ${status.className}" data-density="12" data-surface>
               <span class="agent-card__identity">
-                <span class="agent-status">${statusBadge(status.tone)}</span>
+                <span class="agent-status" title="${escapeHtml(status.label)}">${statusBadge(status.tone)}<span class="visually-hidden">${escapeHtml(status.label)}</span></span>
                 <strong class="agent-card__name">${escapeHtml(agentName)}</strong>
                 ${agent.type === "api" ? '<span class="tag tag--12 tag--rectangle">API</span>' : ""}
               </span>

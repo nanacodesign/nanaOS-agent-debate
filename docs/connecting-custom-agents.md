@@ -5,6 +5,8 @@ Agent Debate supports two connection types. Pick the first one that fits:
 1. **API endpoint (recommended)** — the app calls any OpenAI-compatible chat completions endpoint directly. No code, no wrapper script, no extra install. This covers Ollama, LM Studio, OpenAI, OpenRouter, Groq, vLLM, and most other providers.
 2. **CLI wrapper (escape hatch)** — a small script you write for services that do not expose an OpenAI-compatible endpoint.
 
+> **Already using Claude, ChatGPT, or Gemini?** You don't need an API key at all: the official `claude`, `codex`, and `gemini` CLIs run on the plan you already have — a paid subscription or, for Gemini CLI, the free personal tier. Connect them with the **CLI command** type (see the README) and save the API route for local or unsupported models.
+
 ---
 
 ## Option 1: API Endpoint (Built In)

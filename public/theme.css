@@ -181,6 +181,17 @@
   --enter-quick: 150ms ease;
 }
 
+/* ------------------------------------------------------------ Box model */
+/* The design system resets every element to border-box (nanaos.reset); the
+ * fallback must match, or 100%-width inputs overflow their cards by their
+ * padding. Zero-specificity inside the lowest layer, so anything above wins. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 /* ---------------------------------------------------------------- Icons */
 
 .icon {
@@ -367,7 +378,6 @@
 :where(.badge) {
   display: inline-grid;
   place-items: center;
-  box-sizing: border-box;
   background: var(--status-error);
   color: var(--foreground-inverse);
   font-size: var(--font-size-12);
@@ -642,7 +652,6 @@
 :where(.switch__track) {
   display: inline-flex;
   align-items: center;
-  box-sizing: border-box;
   width: 32px;
   height: 20px;
   padding: 2px;
@@ -1272,7 +1281,6 @@
 }
 
 :where(.spinner__icon) {
-  box-sizing: border-box;
   width: 16px;
   height: 16px;
   border: var(--border-width-2) solid var(--line-soft);
