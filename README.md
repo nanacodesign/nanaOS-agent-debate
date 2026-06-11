@@ -12,6 +12,8 @@ The app is designed for maintainers who want a fast second opinion before changi
 
 ![Main Dashboard](public/assets/main-dashboard.png)
 
+![Debate Run Error](public/assets/debate-error.png)
+
 ![Run Details](public/assets/run-details.png)
 
 ![Footer screenshot](public/assets/footer.png)
