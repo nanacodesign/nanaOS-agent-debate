@@ -1,6 +1,10 @@
-# Agent Debate
+# nanaOS Agent Debate
 
-Agent Debate is a local-first debate room for comparing answers from multiple AI coding agents. It runs installed CLI agents such as Gemini, Claude, and Codex — or any OpenAI-compatible API endpoint such as Ollama — from the same project folder, streams the debate into a browser UI, and saves each transcript as Markdown.
+[![GitHub stars](https://img.shields.io/github/stars/nanacodesign/agent-debate.svg?style=social)](https://github.com/nanacodesign/agent-debate/stargazers)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-nana-blue.svg?logo=linkedin&style=flat-square)](https://www.linkedin.com/in/nanacodesign/)
+[![Website](https://img.shields.io/badge/Website-nanacodesign.com-brightgreen.svg?style=flat-square)](https://nanacodesign.com/)
+
+nanaOS Agent Debate is a local-first debate room for comparing answers from multiple AI coding agents. It runs installed CLI agents such as Gemini, Claude, and Codex — or any OpenAI-compatible API endpoint such as Ollama — from the same project folder, streams the debate into a browser UI, and saves each transcript as Markdown.
 
 The app is designed for maintainers who want a fast second opinion before changing code, APIs, design-system contracts, or project direction.
 
@@ -20,7 +24,7 @@ The app is designed for maintainers who want a fast second opinion before changi
 - At least one authenticated agent CLI on your `PATH`, or an OpenAI-compatible API endpoint (for example a local Ollama server).
 - macOS, Linux, or another environment that can run Node child processes.
 
-Agent Debate never stores API keys. CLI agents authenticate through their own official setup flows. API agents store only the name of an environment variable; the key is read from your shell when a debate runs and is never written to disk.
+nanaOS Agent Debate never stores API keys. CLI agents authenticate through their own official setup flows. API agents store only the name of an environment variable; the key is read from your shell when a debate runs and is never written to disk.
 
 ## Quick Start
 
@@ -126,7 +130,7 @@ NANAOS_DESIGN_SYSTEM_PATH=/path/to/design-system
 
 ## Theming
 
-Agent Debate ships with a built-in, self-contained theme (`public/theme.css`, plus open-licensed Geist fonts and a small Material Symbols subset under `public/vendor/`), so the UI works out of the box with no external assets.
+nanaOS Agent Debate ships with a built-in, self-contained theme (`public/theme.css`, plus open-licensed Geist fonts and a small Material Symbols subset under `public/vendor/`), so the UI works out of the box with no external assets.
 
 If you maintain your own design system, point `NANAOS_DESIGN_SYSTEM_PATH` at its build directory. Matching CSS, fonts, and icons are then served under `/nanaos/` and override the built-in theme. The override is layered with CSS cascade layers so a mounted design system always wins locally, while a fresh clone falls back to the neutral built-in theme automatically.
 
@@ -138,7 +142,7 @@ If you maintain your own design system, point `NANAOS_DESIGN_SYSTEM_PATH` at its
 
 ## Safety Notes
 
-Agent Debate executes local commands that you configure. Only connect CLIs you trust, and review the project path before starting a debate. The app binds to `127.0.0.1` by default so it is not exposed on your network unless you opt into another host.
+nanaOS Agent Debate executes local commands that you configure. Only connect CLIs you trust, and review the project path before starting a debate. The app binds to `127.0.0.1` by default so it is not exposed on your network unless you opt into another host.
 
 API agents send the debate prompt (topic, imported context, and the running transcript) to the endpoint you configure. With local endpoints such as Ollama everything stays on your machine; with cloud providers the prompt leaves your machine under that provider's terms.
 
@@ -147,6 +151,12 @@ Because agents run as local shell commands, exposing the server to a network (fo
 ## OpenAI Codex for OSS
 
 This project is being prepared as an open-source local tool for maintainers and contributors. If you are applying for OpenAI's Codex for OSS support, the public repository URL, maintainer role, OpenAI organization ID, and intended API-credit usage plan are the core details requested in the application form.
+
+## Creator
+
+**nana**
+- **Website**: [https://nanacodesign.com/](https://nanacodesign.com/)
+- **LinkedIn**: [https://www.linkedin.com/in/nanacodesign/](https://www.linkedin.com/in/nanacodesign/)
 
 ## License
 

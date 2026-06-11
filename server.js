@@ -7,6 +7,7 @@ import {
   readFileSync,
   readdirSync,
   statSync,
+  watch,
   writeFileSync,
 } from "node:fs";
 import { appendFile } from "node:fs/promises";
@@ -1851,6 +1852,82 @@ async function handleApp(req, res) {
   }
 }
 
+// ---------------------------------------------------------------- Live reload
+// Dev convenience: watch the static asset dirs and tell open tabs to refresh
+// when a file changes. CSS edits hot-swap the <link> stylesheets in place — no
+// full reload, so app state and in-flight debates survive; JS/HTML edits do a
+// full reload. A tiny client script (below) is injected into served HTML and
+// listens on the /__livereload SSE stream. Disable with AGENT_DEBATE_LIVE_RELOAD=0.
+const liveReloadEnabled = process.env.AGENT_DEBATE_LIVE_RELOAD !== "0";
+const liveReloadClients = new Set();
+
+const liveReloadClientScript = `<script>
+(() => {
+  const source = new EventSource("/__livereload");
+  source.addEventListener("css", () => {
+    for (const link of document.querySelectorAll('link[rel="stylesheet"]')) {
+      const url = new URL(link.getAttribute("href"), location.href);
+      url.searchParams.set("__lr", String(Date.now()));
+      const fresh = link.cloneNode();
+      fresh.setAttribute("href", url.pathname + url.search);
+      fresh.addEventListener("load", () => link.remove(), { once: true });
+      link.parentNode.insertBefore(fresh, link.nextSibling);
+    }
+  });
+  source.addEventListener("reload", () => location.reload());
+})();
+</script>`;
+
+function handleLiveReload(req, res) {
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-store",
+    Connection: "keep-alive",
+  });
+  res.write("retry: 1000\n\n");
+  liveReloadClients.add(res);
+  const keepAlive = setInterval(() => res.write(": ping\n\n"), 30000);
+  req.on("close", () => {
+    clearInterval(keepAlive);
+    liveReloadClients.delete(res);
+  });
+}
+
+function notifyLiveReload(event) {
+  for (const res of liveReloadClients) {
+    res.write(`event: ${event}\ndata: {}\n\n`);
+  }
+}
+
+function startLiveReloadWatcher() {
+  if (!liveReloadEnabled) return;
+  const watchDirs = [publicDir];
+  const designSystemDist = join(designSystemDir, "dist");
+  if (existsSync(designSystemDist)) watchDirs.push(designSystemDist);
+
+  let timer = null;
+  let cssOnly = true;
+  const onChange = (_event, filename) => {
+    const name = String(filename || "");
+    if (name.includes("node_modules") || name.endsWith("~")) return;
+    if (!name.endsWith(".css")) cssOnly = false;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      notifyLiveReload(cssOnly ? "css" : "reload");
+      cssOnly = true;
+    }, 60);
+  };
+
+  for (const dir of watchDirs) {
+    try {
+      watch(dir, { recursive: true }, onChange);
+    } catch (error) {
+      console.warn(`Live reload: could not watch ${dir} (${error.message}).`);
+    }
+  }
+  console.log(`Live reload watching ${watchDirs.join(", ")}`);
+}
+
 function serveStatic(req, res) {
   let requested = "/index.html";
   try {
@@ -1872,6 +1949,21 @@ function serveStatic(req, res) {
   }
 
   const ext = extname(fullPath);
+
+  // Inject the live-reload client into HTML so edits push to open tabs.
+  if (liveReloadEnabled && ext === ".html") {
+    let html = readFileSync(fullPath, "utf8");
+    html = html.includes("</body>")
+      ? html.replace("</body>", `${liveReloadClientScript}\n</body>`)
+      : html + liveReloadClientScript;
+    res.writeHead(200, {
+      "Content-Type": mimeTypes[ext],
+      "Cache-Control": "no-store",
+    });
+    res.end(html);
+    return;
+  }
+
   res.writeHead(200, {
     "Content-Type": mimeTypes[ext] || "application/octet-stream",
     "Cache-Control": "no-store",
@@ -1986,7 +2078,13 @@ createServer((req, res) => {
     return;
   }
 
+  if (req.method === "GET" && req.url === "/__livereload") {
+    handleLiveReload(req, res);
+    return;
+  }
+
   serveStatic(req, res);
 }).listen(port, host, () => {
   console.log(`Agent Debate running at http://${host}:${port}`);
+  startLiveReloadWatcher();
 });

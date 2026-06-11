@@ -3,34 +3,50 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Agent Debate</title>
+    <title>nanaOS Agent Debate</title>
     <link rel="icon" href="/assets/debate.png" type="image/png" />
     <!-- Built-in neutral theme: makes the app self-contained on a fresh clone. -->
-    <link rel="stylesheet" href="/theme.css" />
+    <link rel="stylesheet" href="/theme.css?v=1.1" />
     <!-- Optional design-system override. Served from NANAOS_DESIGN_SYSTEM_PATH when
          mounted; 404s harmlessly otherwise. Loads after theme.css so it wins locally. -->
     <link rel="stylesheet" href="/nanaos/dist/nanaos.css" />
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=1.1" />
   </head>
   <body data-surface>
     <div class="app-shell">
       <header class="topbar">
         <div class="brand">
           <img class="mark" src="/assets/debate.png" alt="Debate" />
-          <div class="title-body brand-copy">
-            <h1 class="title-body__title typography-headline-24">Agent Debate</h1>
-          </div>
+          <h1 class="title">nanaOS Agent Debate</h1>
         </div>
 
         <div class="topbar-status">
+          <!-- GitHub Star / Promotion -->
+          <div class="github-star-container">
+            <a
+              id="githubStarLink"
+              href="https://github.com/nanacodesign/agent-debate"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="button button--outlined button--14 button--round button--icon-start github-star-button"
+            >
+              <span class="button__icon" aria-hidden="true">
+                <span class="icon icon--symbol icon--style-filled" style="color: var(--status-warning-fg, #f4b400);">star</span>
+              </span>
+              <span class="button__label" data-i18n="app.header.starLabel">Star</span>
+            </a>
+            <span class="github-star-text">
+              <span data-i18n="app.header.starText">cheer this project on</span>
+              <span class="github-star-dot" aria-hidden="true">·</span>
+              <span id="starCount" class="github-star-count" style="display: none;">0</span>
+            </span>
+          </div>
+
           <span id="debateStatus" class="debate-status is-ready" aria-live="polite">
             <span class="badge badge--unavailable" data-kind="dot" data-tone="unavailable" data-placement="top-end" aria-hidden="true"></span>
             <span class="debate-status__label">Ready</span>
           </span>
-          <button id="refreshStatus" class="button button--outlined button--14 button--round button--icon-start" type="button">
-            <span class="button__icon" aria-hidden="true"><span class="icon icon--symbol icon--style-outlined">refresh</span></span>
-            <span class="button__label" data-i18n="refresh.label">Status</span>
-          </button>
+
           <button
             id="openSettings"
             class="button button--outlined button--14 button--circle button--icon-only dialog-trigger settings-trigger"
@@ -110,9 +126,9 @@
                 <input id="agentName" class="input" data-density="12" name="name" type="text" placeholder="Codex" data-i18n-placeholder="agents.namePlaceholder" required />
               </label>
 
-              <label class="native-select-field">
-                <span class="input-label-row">
-                  <span class="native-select-label" data-i18n="agents.type">Connection type</span>
+              <div class="select agent-form-select" id="agentTypeSelectContainer">
+                <div class="agent-form-select-trigger-column">
+                  <span class="select__label" data-i18n="agents.type">Connection type</span>
                   <span class="hover-card field-hint-card" data-side="right" data-motion="quick">
                     <button class="hover-card__trigger button button--outlined button--16 button--round" type="button" aria-label="About Connection type">
                       <span class="button__label">!</span>
@@ -126,15 +142,34 @@
                       </span>
                     </span>
                   </span>
-                </span>
-                <span class="native-select__wrap">
-                  <select id="agentType" class="native-select" name="type">
-                    <option value="cli" data-i18n="agents.typeCli">CLI command</option>
-                    <option value="api" data-i18n="agents.typeApi">API endpoint</option>
-                  </select>
-                  <span class="native-select__icon icon" aria-hidden="true">chevron_right</span>
-                </span>
-              </label>
+                  <button
+                    id="agentTypeTrigger"
+                    class="select__trigger"
+                    type="button"
+                    role="combobox"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    aria-controls="agentTypeList"
+                  >
+                    <span class="select__value" id="agentTypeTrigger-value">CLI command</span>
+                    <span class="icon select__indicator" aria-hidden="true">chevron_right</span>
+                  </button>
+                </div>
+                <div class="select__positioner">
+                  <div class="select__popup" data-surface>
+                    <div class="select__listbox" id="agentTypeList" role="listbox">
+                      <button class="select__item" type="button" role="option" aria-selected="true" data-selected data-value="cli" data-i18n="agents.typeCli">
+                        <span class="select__item-text">CLI command</span>
+                        <span class="icon select__item-indicator" aria-hidden="true">check</span>
+                      </button>
+                      <button class="select__item" type="button" role="option" aria-selected="false" data-value="api" data-i18n="agents.typeApi">
+                        <span class="select__item-text">API endpoint</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <input type="hidden" id="agentType" name="type" value="cli" />
+              </div>
 
               <div class="agent-presets" data-agent-field="api" hidden>
                 <span class="input-label" data-i18n="agents.presets">Presets</span>
@@ -252,9 +287,9 @@
               </label>
 
               <div class="agent-form-grid">
-                <label class="native-select-field" data-agent-field="cli">
-                  <span class="input-label-row">
-                    <span class="native-select-label" data-i18n="agents.inputMode">Input mode</span>
+                <div class="select agent-form-select" data-agent-field="cli" id="agentInputSelect">
+                  <div class="agent-form-select-trigger-column">
+                    <span class="select__label" data-i18n="agents.inputMode">Input mode</span>
                     <span class="hover-card field-hint-card" data-side="right" data-motion="quick">
                       <button class="hover-card__trigger button button--outlined button--16 button--round" type="button" aria-label="About Input mode">
                         <span class="button__label">!</span>
@@ -268,16 +303,37 @@
                         </span>
                       </span>
                     </span>
-                  </span>
-                  <span class="native-select__wrap">
-                    <select id="agentInput" class="native-select" name="input">
-                      <option value="stdin">stdin</option>
-                      <option value="stdin-last-message-file">stdin + last message file</option>
-                      <option value="none">none</option>
-                    </select>
-                    <span class="native-select__icon icon" aria-hidden="true">chevron_right</span>
-                  </span>
-                </label>
+                    <button
+                      id="agentInputTrigger"
+                      class="select__trigger"
+                      type="button"
+                      role="combobox"
+                      aria-haspopup="listbox"
+                      aria-expanded="false"
+                      aria-controls="agentInputList"
+                    >
+                      <span class="select__value" id="agentInputTrigger-value">stdin</span>
+                      <span class="icon select__indicator" aria-hidden="true">chevron_right</span>
+                    </button>
+                  </div>
+                  <div class="select__positioner">
+                    <div class="select__popup" data-surface>
+                      <div class="select__listbox" id="agentInputList" role="listbox">
+                        <button class="select__item" type="button" role="option" aria-selected="true" data-selected data-value="stdin">
+                          <span class="select__item-text">stdin</span>
+                          <span class="icon select__item-indicator" aria-hidden="true">check</span>
+                        </button>
+                        <button class="select__item" type="button" role="option" aria-selected="false" data-value="stdin-last-message-file">
+                          <span class="select__item-text">stdin + last message file</span>
+                        </button>
+                        <button class="select__item" type="button" role="option" aria-selected="false" data-value="none">
+                          <span class="select__item-text">none</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <input type="hidden" id="agentInput" name="input" value="stdin" />
+                </div>
 
                 <label class="switch-field" id="agentEnabledField" data-checked>
                   <button id="agentEnabled" class="switch" type="button" role="switch" aria-checked="true" data-checked data-size="md">
@@ -318,13 +374,13 @@
           <section class="panel runs-panel" aria-labelledby="runs-title" data-surface>
             <div class="panel-head">
               <div class="title-body" data-title-size="14">
-                <h2 id="runs-title" class="title-body__title" data-i18n="runs.title">Debates</h2>
-                <p class="title-body__body" data-i18n="runs.subtitle">Recent debate transcripts.</p>
+                <h2 id="runs-title" class="title-body__title" data-i18n="runs.title">Debate Records</h2>
+                <p class="title-body__body" data-i18n="runs.subtitle">Recent debate records.</p>
               </div>
             </div>
-            <form class="run-search" id="runSearchForm" action="/api/runs" method="get" role="search" aria-label="Search debate transcripts" data-i18n-aria-label="runs.searchAria">
+            <form class="run-search" id="runSearchForm" action="/api/runs" method="get" role="search" aria-label="Search debate records" data-i18n-aria-label="runs.searchAria">
               <label class="input-field run-search__field" for="runSearch" data-label-hidden>
-                <span class="input-label input-label--visually-hidden" data-i18n="runs.searchLabel">Search debates</span>
+                <span class="input-label input-label--visually-hidden" data-i18n="runs.searchLabel">Search debate records</span>
                 <span class="input-control" data-density="12" data-icon="search">
                   <span class="input-icon icon" aria-hidden="true">search</span>
                   <input
@@ -333,7 +389,7 @@
                     data-density="12"
                     name="q"
                     type="search"
-                    placeholder="Search debates"
+                    placeholder="Search debate records"
                     data-i18n-placeholder="runs.searchPlaceholder"
                     autocomplete="off"
                     spellcheck="false"
@@ -451,6 +507,7 @@
 
             <label class="textarea-field">
               <span class="textarea-label" data-i18n="composer.context">Context</span>
+              <div id="contextAttachments" class="attachment-list" hidden></div>
               <textarea id="context" class="textarea" name="context" rows="8" placeholder="Paste drafts, link notes, and requirements to reference" data-i18n-placeholder="composer.contextPlaceholder"></textarea>
             </label>
 
@@ -467,6 +524,21 @@
           </form>
         </aside>
       </div>
+      <footer class="app-footer" data-surface>
+        <span class="app-footer__credit">
+          <span data-i18n="app.footer.madeBy">made by nana · CC BY 4.0</span>
+        </span>
+        <span class="app-footer__links">
+          <a href="https://nanacodesign.com/" target="_blank" rel="noopener noreferrer" class="app-footer__link" aria-label="Website">
+            <span class="icon" aria-hidden="true">language</span>
+          </a>
+          <a href="https://www.linkedin.com/in/nanacodesign/" target="_blank" rel="noopener noreferrer" class="app-footer__link" aria-label="LinkedIn">
+            <svg class="icon-svg" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
+            </svg>
+          </a>
+        </span>
+      </footer>
     </div>
 
     <div class="dialog-viewport settings-dialog" id="settingsDialog" data-scroll="viewport">

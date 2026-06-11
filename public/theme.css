@@ -68,6 +68,7 @@
   --font-size-16: 16px;
   --font-size-20: 20px;
   --font-size-24: 24px;
+  --font-size-48: 48px;
   --font-weight-400: 400;
   --font-weight-500: 500;
   --font-weight-600: 600;
@@ -1381,6 +1382,14 @@
   line-height: var(--line-height-14);
   /* App themes via light-dark(), not [data-theme]; the design system's dark
    * tuning (weight 500 / letter-spacing-012) is mirrored that way here. */
+  font-weight: light-dark(var(--font-weight-600), var(--font-weight-500));
+  letter-spacing: light-dark(var(--letter-spacing-0), var(--letter-spacing-012));
+}
+
+.typography-display-48 {
+  font-family: var(--font-family-geist);
+  font-size: var(--font-size-48);
+  line-height: var(--line-height-10);
   font-weight: light-dark(var(--font-weight-600), var(--font-weight-500));
   letter-spacing: light-dark(var(--letter-spacing-0), var(--letter-spacing-012));
 }

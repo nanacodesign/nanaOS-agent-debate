@@ -1,9 +1,13 @@
 {
-  "name": "agent-debate",
+  "name": "nanaos-agent-debate",
   "version": "0.1.0",
   "description": "Local debate room for comparing Gemini, Claude, and Codex CLI outputs.",
   "license": "MIT",
   "type": "module",
+  "author": {
+    "name": "nana",
+    "url": "https://www.linkedin.com/in/nanacodesign/"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nanacodesign/agent-debate.git"

@@ -19,7 +19,7 @@ const runList = document.querySelector("#runList");
 const runSearchForm = document.querySelector("#runSearchForm");
 const runSearchInput = document.querySelector("#runSearch");
 const runSearchStatus = document.querySelector("#runSearchStatus");
-const refreshStatus = document.querySelector("#refreshStatus");
+
 const debateForm = document.querySelector("#debateForm");
 const startButton = document.querySelector("#startButton");
 const topicInput = document.querySelector("#topic");
@@ -259,8 +259,57 @@ async function buildImageImport(file) {
   ].join("\n");
 }
 
-async function importContextFiles() {
-  const files = Array.from(contextFile.files || []);
+let attachedFiles = [];
+
+function renderAttachedFiles() {
+  const container = document.querySelector("#contextAttachments");
+  if (!container) return;
+
+  if (attachedFiles.length === 0) {
+    container.innerHTML = "";
+    container.hidden = true;
+    return;
+  }
+
+  container.hidden = false;
+  container.innerHTML = attachedFiles
+    .map((file, index) => {
+      if (file.isImage) {
+        return `
+          <div class="attachment-card" data-index="${index}">
+            <img class="attachment-card__preview" src="${escapeHtml(file.dataUrl)}" alt="${escapeHtml(file.name)}" />
+            <button class="attachment-card__remove" type="button" aria-label="Remove attachment" data-index="${index}">
+              <span class="icon" aria-hidden="true">close</span>
+            </button>
+          </div>
+        `;
+      } else {
+        return `
+          <div class="attachment-card" data-index="${index}">
+            <div class="attachment-card__fallback">
+              <span class="icon" aria-hidden="true" style="font-size: 24px; margin-block-end: 4px;">description</span>
+              <span style="font-size: 10px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%;">${escapeHtml(file.name)}</span>
+            </div>
+            <button class="attachment-card__remove" type="button" aria-label="Remove attachment" data-index="${index}">
+              <span class="icon" aria-hidden="true">close</span>
+            </button>
+          </div>
+        `;
+      }
+    })
+    .join("");
+}
+
+// Delegate attachment removal
+document.querySelector("#contextAttachments")?.addEventListener("click", (event) => {
+  const removeButton = event.target.closest(".attachment-card__remove");
+  if (!removeButton) return;
+  const index = Number(removeButton.dataset.index);
+  attachedFiles.splice(index, 1);
+  renderAttachedFiles();
+});
+
+async function handleContextFiles(files) {
   if (!files.length) return;
 
   contextImportStatus.textContent = t("composer.importing", {
@@ -268,18 +317,39 @@ async function importContextFiles() {
     plural: plural(files.length),
   });
 
-  const importedBlocks = [];
+  let importedCount = 0;
   const skipped = [];
 
   for (const file of files) {
     try {
       if (isTextImport(file)) {
-        importedBlocks.push(await buildTextImport(file));
+        const textContent = await file.text();
+        attachedFiles.push({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          text: textContent,
+          isImage: false,
+        });
+        importedCount++;
         continue;
       }
 
       if (isImageImport(file)) {
-        importedBlocks.push(await buildImageImport(file));
+        if (file.size > MAX_IMAGE_IMPORT_BYTES) {
+          throw new Error(
+            `${normalizeFileName(file.name)} is larger than ${formatBytes(MAX_IMAGE_IMPORT_BYTES)}`,
+          );
+        }
+        const dataUrl = await readFileAsDataUrl(file);
+        attachedFiles.push({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          dataUrl: dataUrl,
+          isImage: true,
+        });
+        importedCount++;
         continue;
       }
 
@@ -289,16 +359,16 @@ async function importContextFiles() {
     }
   }
 
-  if (importedBlocks.length) {
-    appendContextImport(importedBlocks.join("\n\n---\n\n"));
+  if (importedCount > 0) {
+    renderAttachedFiles();
   }
 
   const statusParts = [];
-  if (importedBlocks.length) {
+  if (importedCount > 0) {
     statusParts.push(
       t("composer.imported", {
-        count: importedBlocks.length,
-        plural: plural(importedBlocks.length),
+        count: importedCount,
+        plural: plural(importedCount),
       }),
     );
   }
@@ -313,6 +383,11 @@ async function importContextFiles() {
   }
 
   contextImportStatus.textContent = statusParts.join(" ");
+}
+
+async function importContextFiles() {
+  const files = Array.from(contextFile.files || []);
+  await handleContextFiles(files);
   contextFile.value = "";
 }
 
@@ -675,10 +750,28 @@ function saveSettings() {
   localStorage.setItem(STORAGE_KEYS.theme, appSettings.theme);
 }
 
+async function fetchGithubStars() {
+  const starCountEl = document.querySelector("#starCount");
+  if (!starCountEl) return;
+  try {
+    const res = await fetch("https://api.github.com/repos/nanacodesign/agent-debate");
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data.stargazers_count === "number") {
+        starCountEl.textContent = data.stargazers_count;
+        starCountEl.style.display = "inline";
+      }
+    }
+  } catch (e) {
+    // Ignore error
+  }
+}
+
 function applySettings() {
   syncSettingsControls();
   applyTheme();
   applyLanguage();
+  fetchGithubStars();
 }
 
 function escapeHtml(value) {
@@ -1412,6 +1505,73 @@ function syncAgentFormType() {
   setAgentNote(isApi ? "agents.usageApi" : "agents.usage");
 }
 
+function updateAgentFormSelectValue(value) {
+  if (agentInputMode) {
+    agentInputMode.value = value;
+  }
+  const selectEl = document.querySelector("#agentInputSelect");
+  if (!selectEl) return;
+
+  const valueSpan = selectEl.querySelector(".select__value");
+  const options = {
+    'stdin': 'stdin',
+    'stdin-last-message-file': 'stdin + last message file',
+    'none': 'none'
+  };
+  if (valueSpan) {
+    valueSpan.textContent = options[value] || value;
+  }
+
+  selectEl.querySelectorAll(".select__item").forEach(item => {
+    const isSel = item.dataset.value === value;
+    item.setAttribute("aria-selected", String(isSel));
+    item.toggleAttribute("data-selected", isSel);
+    const existingCheck = item.querySelector(".select__item-indicator");
+    if (isSel && !existingCheck) {
+      const check = document.createElement("span");
+      check.className = "icon select__item-indicator";
+      check.setAttribute("aria-hidden", "true");
+      check.textContent = "check";
+      item.appendChild(check);
+    } else if (!isSel && existingCheck) {
+      existingCheck.remove();
+    }
+  });
+}
+
+function updateAgentTypeSelectValue(value) {
+  if (agentTypeSelect) {
+    const oldValue = agentTypeSelect.value;
+    agentTypeSelect.value = value;
+    if (oldValue !== value) {
+      syncAgentFormType();
+    }
+  }
+  const selectEl = document.querySelector("#agentTypeSelectContainer");
+  if (!selectEl) return;
+
+  const valueSpan = selectEl.querySelector(".select__value");
+  if (valueSpan) {
+    valueSpan.textContent = value === 'cli' ? t('agents.typeCli') : t('agents.typeApi');
+  }
+
+  selectEl.querySelectorAll(".select__item").forEach(item => {
+    const isSel = item.dataset.value === value;
+    item.setAttribute("aria-selected", String(isSel));
+    item.toggleAttribute("data-selected", isSel);
+    const existingCheck = item.querySelector(".select__item-indicator");
+    if (isSel && !existingCheck) {
+      const check = document.createElement("span");
+      check.className = "icon select__item-indicator";
+      check.setAttribute("aria-hidden", "true");
+      check.textContent = "check";
+      item.appendChild(check);
+    } else if (!isSel && existingCheck) {
+      existingCheck.remove();
+    }
+  });
+}
+
 function openAgentForm(agent = null) {
   if (agent) {
     // Inline edit inside the agent card
@@ -1428,8 +1588,8 @@ function openAgentForm(agent = null) {
     agentNameInput.value = "";
     agentCommandInput.value = "";
     agentArgsInput.value = JSON.stringify([], null, 2);
-    agentInputMode.value = "stdin";
-    agentTypeSelect.value = "cli";
+    updateAgentFormSelectValue("stdin");
+    updateAgentTypeSelectValue("cli");
     agentBaseUrlInput.value = "";
     agentModelInput.value = "";
     agentApiKeyEnvInput.value = "";
@@ -1633,12 +1793,39 @@ async function startDebate(event) {
       return;
     }
 
+    let finalContext = contextInput.value;
+    if (attachedFiles.length > 0) {
+      const attachmentsText = attachedFiles
+        .map((file) => {
+          if (file.isImage) {
+            return [
+              `## Imported image: ${normalizeFileName(file.name)}`,
+              `Type: ${file.type || "unknown"}`,
+              `Size: ${formatBytes(file.size)}`,
+              "",
+              "Data URL:",
+              file.dataUrl,
+            ].join("\n");
+          } else {
+            return [
+              `## Imported text: ${normalizeFileName(file.name)}`,
+              "",
+              file.text.trim(),
+            ].join("\n");
+          }
+        })
+        .join("\n\n---\n\n");
+      finalContext = finalContext.trim()
+        ? `${finalContext}\n\n---\n\n${attachmentsText}`
+        : attachmentsText;
+    }
+
     const response = await fetch("/api/debate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         topic,
-        context: contextInput.value,
+        context: finalContext,
         skills: selectedSkillPayload(),
         workflow: workflowSteps,
         projectPath: projectPathInput.value,
@@ -1862,6 +2049,33 @@ function handleWorkflowInput(event) {
 
 contextFile.addEventListener("change", importContextFiles);
 contextImportButton.addEventListener("click", () => contextFile.click());
+
+contextInput.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  contextInput.classList.add("textarea--drag-over");
+});
+
+contextInput.addEventListener("dragleave", () => {
+  contextInput.classList.remove("textarea--drag-over");
+});
+
+contextInput.addEventListener("drop", async (event) => {
+  event.preventDefault();
+  contextInput.classList.remove("textarea--drag-over");
+
+  const files = Array.from(event.dataTransfer.files || []);
+  if (files.length) {
+    await handleContextFiles(files);
+  }
+});
+
+contextInput.addEventListener("paste", async (event) => {
+  const files = Array.from(event.clipboardData.files || []);
+  if (files.length) {
+    event.preventDefault();
+    await handleContextFiles(files);
+  }
+});
 skillSearchInput.addEventListener("input", scheduleSkillSearch);
 skillSearchInput.addEventListener("keydown", handleSkillSearchKeydown);
 skillSearchInput.addEventListener("focus", () => {
@@ -2005,7 +2219,48 @@ agentList.addEventListener("submit", (event) => {
   saveInlineAgent(form);
 });
 
-refreshStatus.addEventListener("click", loadStatus);
+agentForm.addEventListener("click", (event) => {
+  // Agent form select: trigger button opens/closes popup
+  const selectTrigger = event.target.closest(".agent-form-select .select__trigger");
+  if (selectTrigger) {
+    const selectEl = selectTrigger.closest(".agent-form-select");
+    const positioner = selectEl.querySelector(".select__positioner");
+    const isOpen = positioner.hasAttribute("data-open");
+    if (!isOpen) {
+      positioner.setAttribute("data-open", "");
+      selectTrigger.setAttribute("data-popup-open", "");
+      selectTrigger.setAttribute("aria-expanded", "true");
+    } else {
+      positioner.removeAttribute("data-open");
+      selectTrigger.removeAttribute("data-popup-open");
+      selectTrigger.setAttribute("aria-expanded", "false");
+    }
+    return;
+  }
+
+  // Agent form select: item selection
+  const selectItem = event.target.closest(".agent-form-select .select__item");
+  if (selectItem) {
+    const selectEl = selectItem.closest(".agent-form-select");
+    if (!selectEl) return;
+    const value = selectItem.dataset.value;
+    if (selectEl.id === "agentInputSelect") {
+      updateAgentFormSelectValue(value || "stdin");
+    } else if (selectEl.id === "agentTypeSelectContainer") {
+      updateAgentTypeSelectValue(value || "cli");
+    }
+    // Close popup
+    const positioner = selectEl.querySelector(".select__positioner");
+    positioner?.removeAttribute("data-open");
+    const trigger = selectEl.querySelector(".select__trigger");
+    trigger?.removeAttribute("data-popup-open");
+    trigger?.setAttribute("aria-expanded", "false");
+    trigger?.focus();
+    return;
+  }
+});
+
+
 useProjectButton.addEventListener("click", validateProjectPath);
 openSettings.addEventListener("click", openSettingsDialog);
 settingsBackdrop.addEventListener("click", closeSettingsDialog);
@@ -2035,6 +2290,16 @@ document.addEventListener("pointerdown", (event) => {
   if (languageCombobox.hasAttribute("data-open") && !languageCombobox.contains(target)) {
     setLanguageOpen(false);
   }
+  // Close agent form select popups when clicking outside
+  document.querySelectorAll(".agent-form-select").forEach(agentFormSelect => {
+    if (agentFormSelect.querySelector(".select__positioner[data-open]") && !agentFormSelect.contains(target)) {
+      const positioner = agentFormSelect.querySelector(".select__positioner");
+      positioner.removeAttribute("data-open");
+      const trigger = agentFormSelect.querySelector(".select__trigger");
+      trigger.removeAttribute("data-popup-open");
+      trigger.setAttribute("aria-expanded", "false");
+    }
+  });
 });
 
 settingsThemeTrigger.addEventListener("click", () => {

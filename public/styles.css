@@ -26,6 +26,7 @@
     --app-line: color-mix(in oklab, var(--foreground-default) 14%, transparent);
     --app-line-strong: color-mix(in oklab, var(--foreground-default) 28%, transparent);
     --app-shadow: var(--elevation-4, 0 1px 2px rgb(0 0 0 / 10%), 0 10px 28px rgb(0 0 0 / 8%));
+    --font-size-48: 48px;
   }
 
   :root[data-theme="light"] {
@@ -34,6 +35,9 @@
 
   :root[data-theme="dark"] {
     color-scheme: dark;
+    --action-primary-bg: var(--background-inverse, #ededf0);
+    --action-primary-bg-hover: var(--white, #ffffff);
+    --action-primary-bg-active: var(--background-inverse-dim2, #d2d2d6);
   }
 
   html {
@@ -76,6 +80,11 @@
     min-inline-size: 0;
   }
 
+  .title {
+    font-size: var(--font-size-24);
+    font-weight: var(--font-weight-800);
+  }
+
   .mark {
     flex: 0 0 42px;
     inline-size: 42px;
@@ -83,10 +92,6 @@
     border-radius: var(--border-radius-8);
     object-fit: cover;
     box-shadow: 0 0 0 var(--border-width-1) var(--app-line);
-  }
-
-  .brand-copy {
-    min-inline-size: 0;
   }
 
   .topbar-status {
@@ -122,7 +127,7 @@
     display: grid;
     grid-template-columns: 320px minmax(0, 1fr) 360px;
     gap: var(--spacing-16);
-    block-size: calc(100dvh - 72px);
+    block-size: calc(100dvh - 72px - 48px);
     min-block-size: 0;
     padding: var(--spacing-16);
     overflow: hidden;
@@ -413,24 +418,33 @@
   /* Inline agent-card select: flow the popup in normal layout so the card
    * expands to contain it. The global .select__positioner is position:absolute
    * (floating), which would be clipped by .setup-rail's overflow:auto. */
-  .agent-inline-select {
+  .agent-inline-select,
+  .agent-form-select {
     position: static;
     display: flex;
     flex-direction: column;
     width: 100%;
-    gap: var(--spacing-8);
+    gap: 0;
   }
 
-  .agent-inline-select-trigger-column {
+  .agent-inline-select .switch-field {
+    margin-block-start: var(--spacing-8);
+  }
+
+
+  .agent-inline-select-trigger-column,
+  .agent-form-select-trigger-column {
     display: grid;
     gap: var(--spacing-8);
   }
 
-  .agent-inline-select .agent-form-grid {
+  .agent-inline-select .agent-form-grid,
+  .agent-form-select .agent-form-grid {
     width: 100%;
   }
 
-  .agent-inline-select .select__positioner {
+  .agent-inline-select .select__positioner,
+  .agent-form-select .select__positioner {
     position: static;
     display: none;
     inset: unset;
@@ -438,11 +452,13 @@
     width: 100%;
   }
 
-  .agent-inline-select .select__positioner[data-open] {
+  .agent-inline-select .select__positioner[data-open],
+  .agent-form-select .select__positioner[data-open] {
     display: block;
   }
 
-  .agent-inline-select .select__popup {
+  .agent-inline-select .select__popup,
+  .agent-form-select .select__popup {
     /* Remove the floating shadow so it reads as an in-flow expansion. */
     margin-block-start: var(--spacing-4);
     box-shadow: none;
@@ -450,7 +466,8 @@
     width: 100%;
   }
 
-  .agent-inline-select .select__listbox {
+  .agent-inline-select .select__listbox,
+  .agent-form-select .select__listbox {
     width: 100%;
   }
 
@@ -762,7 +779,7 @@
     .workspace {
       grid-template-columns: 280px minmax(0, 1fr);
       block-size: auto;
-      min-block-size: calc(100dvh - 72px);
+      min-block-size: calc(100dvh - 72px - 48px);
       overflow: visible;
     }
 
@@ -830,4 +847,180 @@
       animation: none;
     }
   }
+
+  /* Drag and Drop Hover Visual Feedback for Context Textarea */
+  .textarea.textarea--drag-over {
+    border-color: var(--action-link-fg) !important;
+    background: var(--state-focus-background) !important;
+    outline: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color) !important;
+    outline-offset: -2px !important;
+  }
+
+  /* Attachment List and Thumbnail Cards */
+  .attachment-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-8);
+    margin-block-end: var(--spacing-8);
+  }
+
+  .attachment-list[hidden] {
+    display: none;
+  }
+
+  .attachment-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 80px;
+    height: 80px;
+    border: var(--border-width-1) solid var(--app-line);
+    border-radius: var(--border-radius-8);
+    background: var(--background-dim1);
+    overflow: hidden;
+    box-shadow: var(--app-shadow);
+    transition: transform var(--enter-quick), border-color var(--enter-quick);
+  }
+
+  .attachment-card:hover {
+    transform: scale(1.02);
+    border-color: var(--action-link-fg);
+  }
+
+  .attachment-card__preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: var(--background-default);
+  }
+
+  .attachment-card__fallback {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    color: var(--foreground-dim2);
+    font-size: var(--font-size-12);
+    font-weight: var(--font-weight-700);
+    text-align: center;
+    padding: var(--spacing-6);
+    line-height: var(--line-height-12);
+    overflow-wrap: anywhere;
+    word-break: break-all;
+  }
+
+  .attachment-card__remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border: 0;
+    border-radius: var(--border-radius-800);
+    background: rgba(0, 0, 0, 0.6);
+    color: #ffffff;
+    cursor: pointer;
+    z-index: 10;
+    transition: background var(--enter-quick);
+  }
+
+  .attachment-card__remove:hover {
+    background: rgba(0, 0, 0, 0.85);
+  }
+
+  .attachment-card__remove .icon {
+    font-size: 12px;
+  }
+
+  /* -------------------------------------------------------- Footer & Star button */
+  .icon--style-filled {
+    font-variation-settings: "FILL" 1, "wght" 600, "GRAD" 0, "opsz" 24 !important;
+  }
+
+  .github-star-container {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-8);
+    color: var(--foreground-dim1);
+    font-size: var(--font-size-12);
+    font-weight: var(--font-weight-700);
+    white-space: nowrap;
+  }
+
+  .github-star-text {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-4);
+  }
+
+  .github-star-dot {
+    color: var(--foreground-dim3);
+  }
+
+  .github-star-count {
+    color: var(--foreground-default);
+    font-weight: var(--font-weight-800);
+  }
+
+  .github-star-button.button {
+    text-decoration: none;
+  }
+
+  .app-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-16);
+    min-block-size: 48px;
+    padding: var(--spacing-12) var(--spacing-20);
+    border-block-start: var(--border-width-1) solid var(--app-line);
+    background: color-mix(in oklab, var(--app-panel) 94%, transparent);
+    color: var(--foreground-dim2);
+    font-size: var(--font-size-12);
+    font-weight: var(--font-weight-700);
+    width: 100%;
+  }
+
+  .app-footer__credit {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-6);
+  }
+
+  .app-footer__links {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-12);
+  }
+
+  .app-footer__link {
+    display: inline-flex;
+    align-items: center;
+    color: var(--foreground-dim2);
+    text-decoration: none;
+    transition: color var(--enter-quick);
+  }
+
+  .app-footer__link:hover {
+    color: var(--foreground-default);
+  }
+
+  .app-footer__link .icon {
+    font-size: 16px;
+  }
+
+  .app-footer__link .icon-svg {
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  /* .typography-display-48 {
+    font-family: var(--font-family-geist);
+    font-size: var(--font-size-48) !important;
+    line-height: var(--line-height-10) !important;
+    font-weight: light-dark(var(--font-weight-600), var(--font-weight-500)) !important;
+    letter-spacing: light-dark(var(--letter-spacing-0), var(--letter-spacing-012)) !important;
+  } */
 }
