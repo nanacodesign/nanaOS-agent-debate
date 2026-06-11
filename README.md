@@ -10,6 +10,10 @@ The app is designed for maintainers who want a fast second opinion before changi
 
 ![Agent Debate mark](public/assets/debate.png)
 
+![Main Dashboard](public/assets/main-dashboard.png)
+
+![Run Details](public/assets/run-details.png)
+
 ![Footer screenshot](public/assets/footer.png)
 
 ## Highlights
