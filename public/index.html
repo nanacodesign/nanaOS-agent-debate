@@ -12,41 +12,44 @@
     <link rel="stylesheet" href="/nanaos/dist/nanaos.css" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
-  <body>
+  <body data-surface>
     <div class="app-shell">
       <header class="topbar">
         <div class="brand">
           <img class="mark" src="/assets/debate.png" alt="Debate" />
-          <div class="brand-copy">
-            <h1>Agent Debate</h1>
-            <p data-i18n="brand.subtitle">nanaOS-flavored local debate room for CLI agents</p>
+          <div class="title-body brand-copy">
+            <h1 class="title-body__title typography-headline-24">Agent Debate</h1>
           </div>
         </div>
 
         <div class="topbar-status">
-          <span id="debateStatus" class="tag tag--12 tag--rectangle debate-status is-ready" aria-live="polite">Ready</span>
+          <span id="debateStatus" class="debate-status is-ready" aria-live="polite">
+            <span class="badge badge--unavailable" data-kind="dot" data-tone="unavailable" data-placement="top-end" aria-hidden="true"></span>
+            <span class="debate-status__label">Ready</span>
+          </span>
           <button id="refreshStatus" class="button button--outlined button--14 button--round button--icon-start" type="button">
-            <span class="button__icon icon" aria-hidden="true">refresh</span>
+            <span class="button__icon" aria-hidden="true"><span class="icon icon--symbol icon--style-outlined">refresh</span></span>
             <span class="button__label" data-i18n="refresh.label">Status</span>
           </button>
           <button
             id="openSettings"
-            class="button button--outlined button--14 button--circle button--icon-only settings-trigger"
+            class="button button--outlined button--14 button--circle button--icon-only dialog-trigger settings-trigger"
             type="button"
+            aria-haspopup="dialog"
+            aria-expanded="false"
             aria-label="Settings"
             data-i18n-aria-label="settings.open"
           >
-            <span class="button__icon icon" aria-hidden="true">settings</span>
-            <span class="visually-hidden" data-i18n="settings.open">Settings</span>
+            <span class="button__icon" aria-hidden="true"><span class="icon icon--symbol icon--style-outlined">settings</span></span>
           </button>
         </div>
       </header>
 
       <div class="workspace">
         <aside class="setup-rail">
-          <section class="panel project-panel" aria-labelledby="project-title">
+          <section class="panel project-panel" aria-labelledby="project-title" data-surface>
             <div class="panel-head">
-              <div class="title-body">
+              <div class="title-body" data-title-size="14">
                 <h2 id="project-title" class="title-body__title" data-i18n="project.title">Project</h2>
                 <p class="title-body__body" data-i18n="project.subtitle">Agents run from this folder.</p>
               </div>
@@ -71,9 +74,9 @@
             <p class="supporting" id="appStatus">App is stopped.</p>
           </section>
 
-          <section class="panel agent-panel" aria-labelledby="agents-title">
+          <section class="panel agent-panel" aria-labelledby="agents-title" data-surface>
             <div class="panel-head">
-              <div class="title-body">
+              <div class="title-body" data-title-size="14">
                 <h2 id="agents-title" class="title-body__title" data-i18n="agents.title">Agent Connections</h2>
                 <p class="title-body__body" data-i18n="agents.subtitle">Connect the CLIs you want in the debate.</p>
               </div>
@@ -88,33 +91,214 @@
               <input id="agentId" name="id" type="hidden" />
 
               <label class="input-field">
-                <span class="input-label" data-i18n="agents.name">Name</span>
+                <span class="input-label-row">
+                  <span class="input-label" data-i18n="agents.name">Name</span>
+                  <span class="hover-card field-hint-card" data-side="right" data-motion="quick">
+                    <button class="hover-card__trigger button button--outlined button--16 button--round" type="button" aria-label="About Name">
+                      <span class="button__label">!</span>
+                    </button>
+                    <span class="hover-card__positioner" data-side="right">
+                      <span class="hover-card__popup" data-surface>
+                        <span class="title-body" data-title-size="14">
+                          <strong class="title-body__title" data-i18n="agents.name">Name</strong>
+                          <span class="title-body__body" data-i18n="agents.nameTooltip">Display label shown in the debate UI next to agent responses.</span>
+                        </span>
+                      </span>
+                    </span>
+                  </span>
+                </span>
                 <input id="agentName" class="input" data-density="12" name="name" type="text" placeholder="Codex" data-i18n-placeholder="agents.namePlaceholder" required />
               </label>
 
-              <label class="input-field">
-                <span class="input-label" data-i18n="agents.command">Command</span>
+              <label class="native-select-field">
+                <span class="input-label-row">
+                  <span class="native-select-label" data-i18n="agents.type">Connection type</span>
+                  <span class="hover-card field-hint-card" data-side="right" data-motion="quick">
+                    <button class="hover-card__trigger button button--outlined button--16 button--round" type="button" aria-label="About Connection type">
+                      <span class="button__label">!</span>
+                    </button>
+                    <span class="hover-card__positioner" data-side="right">
+                      <span class="hover-card__popup" data-surface>
+                        <span class="title-body" data-title-size="14">
+                          <strong class="title-body__title" data-i18n="agents.type">Connection type</strong>
+                          <span class="title-body__body" data-i18n="agents.typeTooltip">CLI command runs a local executable. API endpoint calls an OpenAI-compatible chat completions URL with no extra install.</span>
+                        </span>
+                      </span>
+                    </span>
+                  </span>
+                </span>
+                <span class="native-select__wrap">
+                  <select id="agentType" class="native-select" name="type">
+                    <option value="cli" data-i18n="agents.typeCli">CLI command</option>
+                    <option value="api" data-i18n="agents.typeApi">API endpoint</option>
+                  </select>
+                  <span class="native-select__icon icon" aria-hidden="true">chevron_right</span>
+                </span>
+              </label>
+
+              <div class="agent-presets" data-agent-field="api" hidden>
+                <span class="input-label" data-i18n="agents.presets">Presets</span>
+                <div class="button-row">
+                  <button class="button button--outlined button--14 button--round" type="button" data-agent-preset="ollama">
+                    <span class="button__label">Ollama</span>
+                  </button>
+                  <button class="button button--outlined button--14 button--round" type="button" data-agent-preset="openai">
+                    <span class="button__label">OpenAI</span>
+                  </button>
+                  <button class="button button--outlined button--14 button--round" type="button" data-agent-preset="openrouter">
+                    <span class="button__label">OpenRouter</span>
+                  </button>
+                </div>
+              </div>
+
+              <label class="input-field" data-agent-field="api" hidden>
+                <span class="input-label-row">
+                  <span class="input-label" data-i18n="agents.baseUrl">Base URL</span>
+                  <span class="hover-card field-hint-card" data-side="right" data-motion="quick">
+                    <button class="hover-card__trigger button button--outlined button--16 button--round" type="button" aria-label="About Base URL">
+                      <span class="button__label">!</span>
+                    </button>
+                    <span class="hover-card__positioner" data-side="right">
+                      <span class="hover-card__popup" data-surface>
+                        <span class="title-body" data-title-size="14">
+                          <strong class="title-body__title" data-i18n="agents.baseUrl">Base URL</strong>
+                          <span class="title-body__body" data-i18n="agents.baseUrlTooltip">OpenAI-compatible base URL, usually ending in /v1. Agent Debate appends /chat/completions to this URL.</span>
+                        </span>
+                      </span>
+                    </span>
+                  </span>
+                </span>
+                <input id="agentBaseUrl" class="input" data-density="12" name="baseUrl" type="url" placeholder="http://127.0.0.1:11434/v1" data-i18n-placeholder="agents.baseUrlPlaceholder" />
+              </label>
+
+              <label class="input-field" data-agent-field="api" hidden>
+                <span class="input-label-row">
+                  <span class="input-label" data-i18n="agents.model">Model</span>
+                  <span class="hover-card field-hint-card" data-side="right" data-motion="quick">
+                    <button class="hover-card__trigger button button--outlined button--16 button--round" type="button" aria-label="About Model">
+                      <span class="button__label">!</span>
+                    </button>
+                    <span class="hover-card__positioner" data-side="right">
+                      <span class="hover-card__popup" data-surface>
+                        <span class="title-body" data-title-size="14">
+                          <strong class="title-body__title" data-i18n="agents.model">Model</strong>
+                          <span class="title-body__body" data-i18n="agents.modelTooltip">Model name the endpoint serves, for example a model you pulled in Ollama or a provider model ID.</span>
+                        </span>
+                      </span>
+                    </span>
+                  </span>
+                </span>
+                <input id="agentModel" class="input" data-density="12" name="model" type="text" placeholder="llama3.3" data-i18n-placeholder="agents.modelPlaceholder" />
+              </label>
+
+              <label class="input-field" data-agent-field="api" hidden>
+                <span class="input-label-row">
+                  <span class="input-label" data-i18n="agents.apiKeyEnv">API key env var</span>
+                  <span class="hover-card field-hint-card" data-side="right" data-motion="quick">
+                    <button class="hover-card__trigger button button--outlined button--16 button--round" type="button" aria-label="About API key env var">
+                      <span class="button__label">!</span>
+                    </button>
+                    <span class="hover-card__positioner" data-side="right">
+                      <span class="hover-card__popup" data-surface>
+                        <span class="title-body" data-title-size="14">
+                          <strong class="title-body__title" data-i18n="agents.apiKeyEnv">API key env var</strong>
+                          <span class="title-body__body" data-i18n="agents.apiKeyEnvTooltip">Name of the environment variable that holds the API key. Export it before starting Agent Debate. Leave empty for local endpoints like Ollama.</span>
+                        </span>
+                      </span>
+                    </span>
+                  </span>
+                </span>
+                <input id="agentApiKeyEnv" class="input" data-density="12" name="apiKeyEnv" type="text" placeholder="OPENAI_API_KEY" data-i18n-placeholder="agents.apiKeyEnvPlaceholder" />
+              </label>
+
+              <label class="input-field" data-agent-field="cli">
+                <span class="input-label-row">
+                  <span class="input-label" data-i18n="agents.command">Command</span>
+                  <span class="hover-card field-hint-card" data-side="right" data-motion="quick">
+                    <button class="hover-card__trigger button button--outlined button--16 button--round" type="button" aria-label="About Command">
+                      <span class="button__label">!</span>
+                    </button>
+                    <span class="hover-card__positioner" data-side="right">
+                      <span class="hover-card__popup" data-surface>
+                        <span class="title-body" data-title-size="14">
+                          <strong class="title-body__title" data-i18n="agents.command">Command</strong>
+                          <span class="title-body__body" data-i18n="agents.commandTooltip">Executable name on your PATH, e.g. gemini, claude, or codex.</span>
+                        </span>
+                      </span>
+                    </span>
+                  </span>
+                </span>
                 <input id="agentCommand" class="input" data-density="12" name="command" type="text" placeholder="codex" data-i18n-placeholder="agents.commandPlaceholder" required />
               </label>
 
-              <label class="textarea-field">
-                <span class="textarea-label" data-i18n="agents.args">Arguments JSON</span>
-                <textarea id="agentArgs" class="textarea mono" name="args" rows="5" spellcheck="false" placeholder='["exec", "--skip-git-repo-check", "-"]' data-i18n-placeholder="agents.argsPlaceholder"></textarea>
+              <label class="textarea-field agent-args-field" data-agent-field="cli">
+                <span class="input-label-row">
+                  <span class="textarea-label" data-i18n="agents.args">Arguments JSON</span>
+                  <span class="hover-card field-hint-card" data-side="right" data-motion="quick">
+                    <button class="hover-card__trigger button button--outlined button--16 button--round" type="button" aria-label="About Arguments JSON">
+                      <span class="button__label">!</span>
+                    </button>
+                    <span class="hover-card__positioner" data-side="right">
+                      <span class="hover-card__popup" data-surface>
+                        <span class="title-body" data-title-size="14">
+                          <strong class="title-body__title" data-i18n="agents.args">Arguments JSON</strong>
+                          <span class="title-body__body" data-i18n="agents.argsTooltip">JSON array of CLI flags passed when running the agent. Use {prompt} or {outputFile} as placeholders.</span>
+                        </span>
+                      </span>
+                    </span>
+                  </span>
+                </span>
+                <textarea id="agentArgs" class="textarea" name="args" rows="5" spellcheck="false" placeholder='["exec", "--skip-git-repo-check", "-"]' data-i18n-placeholder="agents.argsPlaceholder"></textarea>
               </label>
 
               <div class="agent-form-grid">
-                <label class="input-field">
-                  <span class="input-label" data-i18n="agents.inputMode">Input mode</span>
-                  <select id="agentInput" class="input" data-density="12" name="input">
-                    <option value="stdin">stdin</option>
-                    <option value="stdin-last-message-file">stdin + last message file</option>
-                    <option value="none">none</option>
-                  </select>
+                <label class="native-select-field" data-agent-field="cli">
+                  <span class="input-label-row">
+                    <span class="native-select-label" data-i18n="agents.inputMode">Input mode</span>
+                    <span class="hover-card field-hint-card" data-side="right" data-motion="quick">
+                      <button class="hover-card__trigger button button--outlined button--16 button--round" type="button" aria-label="About Input mode">
+                        <span class="button__label">!</span>
+                      </button>
+                      <span class="hover-card__positioner" data-side="right">
+                        <span class="hover-card__popup" data-surface>
+                          <span class="title-body" data-title-size="14">
+                            <strong class="title-body__title" data-i18n="agents.inputMode">Input mode</strong>
+                            <span class="title-body__body" data-i18n="agents.inputModeTooltip">stdin: prompt via standard input. stdin-last-message-file: stdin plus last output file path appended. none: prompt only via args placeholders.</span>
+                          </span>
+                        </span>
+                      </span>
+                    </span>
+                  </span>
+                  <span class="native-select__wrap">
+                    <select id="agentInput" class="native-select" name="input">
+                      <option value="stdin">stdin</option>
+                      <option value="stdin-last-message-file">stdin + last message file</option>
+                      <option value="none">none</option>
+                    </select>
+                    <span class="native-select__icon icon" aria-hidden="true">chevron_right</span>
+                  </span>
                 </label>
 
-                <label class="switch-field">
-                  <input id="agentEnabled" name="enabled" type="checkbox" checked />
-                  <span data-i18n="agents.enabled">Enabled</span>
+                <label class="switch-field" id="agentEnabledField" data-checked>
+                  <button id="agentEnabled" class="switch" type="button" role="switch" aria-checked="true" data-checked data-size="md">
+                    <span class="switch__track" aria-hidden="true" data-checked>
+                      <span class="switch__thumb" data-checked></span>
+                    </span>
+                  </button>
+                  <span class="switch-label" data-i18n="agents.enabled">Enabled</span>
+                  <span class="hover-card field-hint-card" data-side="right" data-motion="quick">
+                    <button class="hover-card__trigger button button--outlined button--16 button--round" type="button" aria-label="About Enabled">
+                      <span class="button__label">!</span>
+                    </button>
+                    <span class="hover-card__positioner" data-side="right">
+                      <span class="hover-card__popup" data-surface>
+                        <span class="title-body" data-title-size="14">
+                          <strong class="title-body__title" data-i18n="agents.enabled">Enabled</strong>
+                          <span class="title-body__body" data-i18n="agents.enabledTooltip">When enabled, this agent participates in every debate round.</span>
+                        </span>
+                      </span>
+                    </span>
+                  </span>
                 </label>
               </div>
 
@@ -131,7 +315,7 @@
             </form>
           </section>
 
-          <section class="panel runs-panel" aria-labelledby="runs-title">
+          <section class="panel runs-panel" aria-labelledby="runs-title" data-surface>
             <div class="panel-head">
               <div class="title-body" data-title-size="14">
                 <h2 id="runs-title" class="title-body__title" data-i18n="runs.title">Debates</h2>
@@ -142,11 +326,7 @@
               <label class="input-field run-search__field" for="runSearch" data-label-hidden>
                 <span class="input-label input-label--visually-hidden" data-i18n="runs.searchLabel">Search debates</span>
                 <span class="input-control" data-density="12" data-icon="search">
-                  <span class="input-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="m21 21-4.35-4.35M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z" />
-                    </svg>
-                  </span>
+                  <span class="input-icon icon" aria-hidden="true">search</span>
                   <input
                     id="runSearch"
                     class="input input--round"
@@ -169,38 +349,48 @@
         </aside>
 
         <main class="debate-main">
-          <section class="workflow-band" aria-labelledby="workflow-title">
+          <section class="workflow-band" aria-labelledby="workflow-title" data-surface>
             <div class="panel-head">
-              <div class="title-body">
+              <div class="title-body" data-title-size="14">
                 <h2 id="workflow-title" class="title-body__title" data-i18n="workflow.title">Workflow</h2>
                 <p class="title-body__body" data-i18n="workflow.subtitle">Designed for quick maintainer decisions before coding.</p>
               </div>
-              <span id="runState" class="state">Ready</span>
             </div>
             <div
               class="list workflow-list"
               id="workflowList"
               data-anatomy="title-body"
               data-size="14"
-              data-density="12"
+              data-density="20"
               data-icon="both"
               data-width="full"
-              data-frame="none"
+              data-frame="outlined"
               data-divider="visible"
-              data-emphasis="base"
+              data-emphasis="dim2"
               data-border-radius="0"
               role="list"
               aria-label="Debate workflow"
               data-i18n-aria-label="workflow.listLabel"
+              data-surface
             ></div>
+            <div class="workflow-actions" style="margin-top: var(--spacing-8);">
+              <button
+                id="addWorkflowStepButton"
+                class="button button--plain button--14 button--round button--icon-start"
+                type="button"
+              >
+                <span class="button__icon" aria-hidden="true"><span class="icon icon--symbol icon--style-outlined">add</span></span>
+                <span class="button__label" data-i18n="workflow.addStep">Add Step</span>
+              </button>
+            </div>
             <p class="supporting workflow-status" id="workflowStatus" aria-live="polite"></p>
           </section>
 
-          <section class="debate-stage" aria-labelledby="debate-title">
+          <section class="debate-stage" aria-labelledby="debate-title" data-surface>
             <div class="panel-head">
-              <div>
-                <h2 id="debate-title" data-i18n="debate.title">Debate Room</h2>
-                <p data-i18n="debate.subtitle">Live output streams into the transcript.</p>
+              <div class="title-body" data-title-size="14">
+                <h2 id="debate-title" class="title-body__title" data-i18n="debate.title">Debate Room</h2>
+                <p class="title-body__body" data-i18n="debate.subtitle">Live output streams into the transcript.</p>
               </div>
             </div>
             <div class="transcript" id="transcript" aria-live="polite" data-empty-label="No debate yet"></div>
@@ -208,9 +398,9 @@
         </main>
 
         <aside class="control-rail">
-          <form class="composer" id="debateForm" action="/api/debate" method="post">
+          <form class="composer" id="debateForm" action="/api/debate" method="post" data-surface>
             <div class="panel-head">
-              <div class="title-body">
+              <div class="title-body" data-title-size="14">
                 <h2 class="title-body__title" data-i18n="composer.title">Composer</h2>
                 <p class="title-body__body" data-i18n="composer.subtitle">Topic and context.</p>
               </div>
@@ -222,28 +412,40 @@
             </label>
 
             <div class="skill-picker">
-              <label class="input-field" for="skillSearch">
-                <span class="input-label" data-i18n="skills.label">Skills</span>
-                <input
-                  id="skillSearch"
-                  class="input"
-                  data-density="12"
-                  name="skills"
-                  type="text"
-                  placeholder="/modern"
-                  data-i18n-placeholder="skills.placeholder"
-                  autocomplete="off"
-                  autocapitalize="off"
-                  spellcheck="false"
-                  role="combobox"
-                  aria-autocomplete="list"
-                  aria-expanded="false"
-                  aria-controls="skillResults"
-                  aria-describedby="skillAssist"
-                />
-              </label>
-              <div class="skill-results" id="skillResults" role="listbox" hidden></div>
-              <div class="skill-chips" id="selectedSkills" aria-live="polite"></div>
+              <div class="combobox" id="skillCombobox">
+                <label class="combobox-label" id="skillSearchLabel" for="skillSearch" data-i18n="skills.label">Skills</label>
+                <div class="combobox__control">
+                  <input
+                    id="skillSearch"
+                    class="combobox__input"
+                    name="skills"
+                    type="text"
+                    placeholder="/modern"
+                    data-i18n-placeholder="skills.placeholder"
+                    autocomplete="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    aria-controls="skillResults"
+                    aria-describedby="skillAssist"
+                  />
+                  <span class="combobox__actions">
+                    <button id="skillTrigger" class="combobox__button combobox__trigger" type="button" tabindex="-1" aria-label="Open options">
+                      <span class="icon" aria-hidden="true">chevron_right</span>
+                    </button>
+                  </span>
+                </div>
+                <div class="combobox__positioner">
+                  <div class="combobox__popup" data-surface data-side="bottom" data-align="start">
+                    <div class="combobox__listbox" id="skillResults" role="listbox" aria-labelledby="skillSearchLabel"></div>
+                    <div class="combobox__empty" id="skillEmpty" hidden></div>
+                  </div>
+                </div>
+              </div>
+              <div class="chip-group skill-chips" id="selectedSkills" role="toolbar" data-selection="none" aria-label="Selected skills" data-i18n-aria-label="skills.selected" aria-live="polite"></div>
               <p class="visually-hidden" id="skillAssist" data-i18n="skills.assist">Type a slash command or skill name, then choose a skill from the results.</p>
             </div>
 
@@ -267,37 +469,86 @@
       </div>
     </div>
 
-    <dialog class="settings-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
-      <form class="settings-panel" method="dialog">
-        <div class="settings-head">
-          <h2 id="settingsTitle" data-i18n="settings.title">Settings</h2>
-          <button
-            class="button button--plain button--14 button--circle button--icon-only"
-            id="settingsClose"
-            type="button"
-            aria-label="Close settings"
-            data-i18n-aria-label="settings.close"
-          >
-            <span class="button__icon icon" aria-hidden="true">close</span>
+    <div class="dialog-viewport settings-dialog" id="settingsDialog" data-scroll="viewport">
+      <div class="dialog-backdrop" aria-hidden="true"></div>
+      <div
+        class="dialog-popup"
+        id="settingsPopup"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settingsTitle"
+        tabindex="-1"
+        data-modal
+        data-size="320"
+        data-scroll="viewport"
+        data-border-radius="16"
+        data-surface
+      >
+        <header class="dialog-header">
+          <h2 class="dialog-title" id="settingsTitle" data-i18n="settings.title">Settings</h2>
+          <button class="dialog-close" id="settingsClose" type="button" aria-label="Close settings" data-i18n-aria-label="settings.close">
+            <span class="icon" aria-hidden="true">close</span>
           </button>
+        </header>
+        <div class="dialog-body">
+          <div class="combobox settings-language" id="languageCombobox">
+            <label class="combobox-label" id="settingsLanguageLabel" for="settingsLanguageInput" data-i18n="settings.language">Language</label>
+            <div class="combobox__control">
+              <input
+                id="settingsLanguageInput"
+                class="combobox__input"
+                type="text"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+                aria-controls="settingsLanguageList"
+              />
+              <span class="combobox__actions">
+                <button id="settingsLanguageTrigger" class="combobox__button combobox__trigger" type="button" tabindex="-1" aria-label="Open options">
+                  <span class="icon" aria-hidden="true">chevron_right</span>
+                </button>
+              </span>
+            </div>
+            <div class="combobox__positioner">
+              <div class="combobox__popup" data-surface data-side="bottom" data-align="start">
+                <div class="combobox__listbox" id="settingsLanguageList" role="listbox" aria-labelledby="settingsLanguageLabel"></div>
+                <div class="combobox__empty" id="settingsLanguageEmpty" hidden></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="select settings-theme" id="themeSelect">
+            <label class="select__label" id="settingsThemeLabel" data-i18n="settings.theme">Theme</label>
+            <button
+              id="settingsThemeTrigger"
+              class="select__trigger"
+              type="button"
+              role="combobox"
+              aria-haspopup="listbox"
+              aria-expanded="false"
+              aria-labelledby="settingsThemeLabel"
+            >
+              <span class="select__value" id="settingsThemeValue">System</span>
+              <span class="icon select__indicator" aria-hidden="true">chevron_right</span>
+            </button>
+            <div class="select__positioner">
+              <div class="select__popup" data-surface>
+                <div class="select__listbox" id="settingsThemeList" role="listbox" aria-labelledby="settingsThemeLabel"></div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="settings-body">
-          <label class="input-field">
-            <span class="input-label" data-i18n="settings.language">Language</span>
-            <select id="settingsLanguageSelect" class="input" data-density="12"></select>
-          </label>
-          <label class="input-field">
-            <span class="input-label" data-i18n="settings.theme">Theme</span>
-            <select id="settingsThemeSelect" class="input" data-density="12"></select>
-          </label>
-        </div>
-        <div class="settings-actions">
+        <footer class="dialog-actions">
           <button class="button button--filled button--14 button--round settings-done" id="settingsDone" type="button">
             <span class="button__label" data-i18n="settings.done">Done</span>
           </button>
-        </div>
-      </form>
-    </dialog>
+        </footer>
+      </div>
+    </div>
 
     <script src="/app.js" type="module"></script>
   </body>

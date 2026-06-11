@@ -368,14 +368,14 @@ function compactText(value, maxLength = 320) {
 
 function normalizeWorkflowSteps(value) {
   const source = Array.isArray(value) ? value : defaultWorkflowSteps;
-  const steps = source
+  let steps = source
     .map((step) => (typeof step === "string" ? step : step?.text || step?.instruction || ""))
     .map((step) => compactText(step, 700))
     .filter(Boolean)
     .slice(0, workflowStepCount);
 
-  while (steps.length < workflowStepCount) {
-    steps.push(defaultWorkflowSteps[steps.length]);
+  if (!steps.length) {
+    steps = defaultWorkflowSteps.map((step) => compactText(step, 700));
   }
 
   return steps.map((text, index) => ({
@@ -383,7 +383,7 @@ function normalizeWorkflowSteps(value) {
     number: index + 1,
     text,
     title: compactText(text, 88),
-    kind: index === workflowStepCount - 1 ? "synthesis" : "debate",
+    kind: index === steps.length - 1 ? "synthesis" : "debate",
   }));
 }
 
@@ -566,19 +566,46 @@ function formatSelectedSkills(skills) {
     .join("\n");
 }
 
+function isHttpUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function normalizeAgentConfig(agent, index) {
   const name = String(agent?.name || `Agent ${index + 1}`).trim();
+  const base = {
+    id: toSlug(agent?.id || name, `agent-${index + 1}`),
+    name,
+    enabled: agent?.enabled !== false,
+  };
+
+  if (agent?.type === "api") {
+    return {
+      ...base,
+      type: "api",
+      baseUrl: String(agent?.baseUrl || "").trim().replace(/\/+$/, ""),
+      model: String(agent?.model || "").trim(),
+      // Name of the environment variable that holds the API key. The key
+      // itself is read from the server process env at run time and is never
+      // written to the config file.
+      apiKeyEnv: String(agent?.apiKeyEnv || "").trim(),
+    };
+  }
+
   const command = String(agent?.command || "").trim();
   const input = agentInputModes.has(agent?.input) ? agent.input : "stdin";
   const args = Array.isArray(agent?.args) ? agent.args.map((arg) => String(arg)) : [];
 
   return {
-    id: toSlug(agent?.id || name, `agent-${index + 1}`),
-    name,
+    ...base,
+    type: "cli",
     command,
     args,
     input,
-    enabled: agent?.enabled !== false,
   };
 }
 
@@ -587,7 +614,7 @@ function normalizeAgents(value) {
   const seen = new Set();
   return source
     .map((agent, index) => normalizeAgentConfig(agent, index))
-    .filter((agent) => agent.name && agent.command)
+    .filter((agent) => agent.name && (agent.type === "api" ? agent.baseUrl && agent.model : agent.command))
     .map((agent, index) => {
       let id = agent.id || `agent-${index + 1}`;
       while (seen.has(id)) id = `${agent.id || "agent"}-${index + 1}`;
@@ -961,10 +988,29 @@ function stopApp() {
 
 function getStatus(agents = readAgents()) {
   return agents.map((agent) => {
+    if (agent.type === "api") {
+      // "Missing" here means a malformed URL or a named key variable that is
+      // not exported in the server's environment. Only the variable NAME is
+      // ever reported; the key value never leaves the process env.
+      const keyMissing = Boolean(agent.apiKeyEnv) && !process.env[agent.apiKeyEnv];
+      return {
+        id: agent.id,
+        name: agent.name,
+        type: "api",
+        baseUrl: agent.baseUrl,
+        model: agent.model,
+        apiKeyEnv: agent.apiKeyEnv,
+        enabled: agent.enabled,
+        connected: isHttpUrl(agent.baseUrl) && Boolean(agent.model) && !keyMissing,
+        path: "",
+      };
+    }
+
     const path = commandPath(agent.command);
     return {
       id: agent.id,
       name: agent.name,
+      type: "cli",
       command: agent.command,
       args: agent.args,
       input: agent.input,
@@ -1007,6 +1053,7 @@ function buildPrompt({
   projectPath,
   roundConfig,
   debateRoundCount,
+  workflowStepTotal,
   agentName,
   participantNames,
   transcript,
@@ -1027,7 +1074,7 @@ ${formatSelectedSkills(selectedSkills)}
 
 Debate setup:
 - Participants: ${participantNames}.
-- Current workflow step: ${roundConfig.number} of ${workflowStepCount}: ${roundConfig.title}.
+- Current workflow step: ${roundConfig.number} of ${workflowStepTotal}: ${roundConfig.title}.
 - Current debate round: ${roundConfig.round} of ${debateRoundCount}.
 - Reply in ${language}.
 - Do not use tools, browse, edit files, or run commands.
@@ -1092,7 +1139,108 @@ function writeEvent(res, event) {
   res.write(`${JSON.stringify(event)}\n`);
 }
 
+async function readChatCompletionsStream(agent, response, res) {
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let output = "";
+  let streamError = "";
+
+  const consumeLine = (line) => {
+    const clean = line.trim();
+    if (!clean.startsWith("data:")) return;
+    const payload = clean.slice(5).trim();
+    if (!payload || payload === "[DONE]") return;
+
+    let parsed;
+    try {
+      parsed = JSON.parse(payload);
+    } catch {
+      return;
+    }
+
+    if (parsed?.error) {
+      streamError = String(parsed.error.message || JSON.stringify(parsed.error));
+      return;
+    }
+
+    const text = parsed?.choices?.[0]?.delta?.content;
+    if (typeof text === "string" && text) {
+      output += text;
+      writeEvent(res, { type: "stream", agent: agent.name, text });
+    }
+  };
+
+  for await (const chunk of response.body) {
+    buffer += decoder.decode(chunk, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    lines.forEach(consumeLine);
+  }
+  buffer += decoder.decode();
+  if (buffer) consumeLine(buffer);
+
+  if (streamError && !output.trim()) {
+    return `[${agent.name} failed]\n\n${streamError}`;
+  }
+
+  return output.trim();
+}
+
+// Calls an OpenAI-compatible chat completions endpoint with the built-in
+// fetch, so connecting Ollama, OpenAI, OpenRouter, LM Studio, and similar
+// services needs no wrapper script and no extra dependency.
+async function runApiAgent(agent, prompt, res) {
+  const url = `${agent.baseUrl}/chat/completions`;
+  const headers = { "Content-Type": "application/json" };
+
+  if (agent.apiKeyEnv) {
+    const apiKey = process.env[agent.apiKeyEnv] || "";
+    if (!apiKey) {
+      return `[${agent.name} failed]\n\nEnvironment variable ${agent.apiKeyEnv} is not set. Export it in the shell that starts Agent Debate.`;
+    }
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
+
+  let response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: agent.model,
+        messages: [{ role: "user", content: prompt }],
+        stream: true,
+      }),
+    });
+  } catch (error) {
+    return `[${agent.name} failed]\n\nCould not reach ${url}: ${error.message}`;
+  }
+
+  if (!response.ok) {
+    const detail = compactText(await response.text().catch(() => ""), 600);
+    return `[${agent.name} failed]\n\n${url} returned status ${response.status}.${detail ? `\n\n${detail}` : ""}`;
+  }
+
+  try {
+    const contentType = String(response.headers.get("content-type") || "");
+    if (!contentType.includes("text/event-stream")) {
+      // The endpoint ignored stream: true and answered with a single JSON body.
+      const data = await response.json();
+      const text = String(data?.choices?.[0]?.message?.content || "").trim();
+      if (text) writeEvent(res, { type: "stream", agent: agent.name, text });
+      return text;
+    }
+
+    return await readChatCompletionsStream(agent, response, res);
+  } catch (error) {
+    return `[${agent.name} failed]\n\n${error.message}`;
+  }
+}
+
 function runAgent(agent, prompt, res, cwd) {
+  if (agent.type === "api") {
+    return runApiAgent(agent, prompt, res);
+  }
   return new Promise((resolveRun) => {
     let stdout = "";
     let stderr = "";
@@ -1184,7 +1332,7 @@ async function handleDebate(req, res) {
   const debateSteps = workflowSteps.filter((step) => step.kind === "debate");
   const synthesisStep = workflowSteps.find((step) => step.kind === "synthesis") || workflowSteps.at(-1);
   const debateRoundCount = debateSteps.length;
-  const language = String(payload.language || "Korean").trim() || "Korean";
+  const language = String(payload.language || "English").trim() || "English";
   let projectPath;
   try {
     projectPath = resolveProjectPath(payload.projectPath);
@@ -1259,6 +1407,7 @@ async function handleDebate(req, res) {
         projectPath,
         roundConfig,
         debateRoundCount,
+        workflowStepTotal: workflowSteps.length,
         agentName: agent.name,
         participantNames,
         transcript: transcriptSnapshot,
@@ -1432,8 +1581,11 @@ function handleRunViewer(req, res) {
     <style>
       :root {
         color-scheme: light dark;
-        --viewer-bg: var(--background-dim1);
-        --viewer-surface: var(--background-default);
+        /* nanaOS surface elevation (ADR-079): light front-anchored (surface
+         * white, page one rung back), dark back-anchored (page darkest,
+         * surface one rung brighter). */
+        --viewer-bg: light-dark(var(--background-dim1), var(--background-default));
+        --viewer-surface: light-dark(var(--background-default), var(--background-dim1));
         --viewer-muted: var(--foreground-dim2);
         --viewer-line: color-mix(in oklab, var(--foreground-default) 14%, transparent);
         --viewer-line-strong: color-mix(in oklab, var(--foreground-default) 28%, transparent);

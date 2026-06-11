@@ -43,6 +43,15 @@
       ],
       "input": "stdin-last-message-file",
       "enabled": true
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama",
+      "type": "api",
+      "baseUrl": "http://127.0.0.1:11434/v1",
+      "model": "llama3.3",
+      "apiKeyEnv": "",
+      "enabled": false
     }
   ]
 }

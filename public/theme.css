@@ -3,7 +3,9 @@
  * ------------------------------------------------------------------
  * This file makes the app fully self-contained when no external design
  * system is mounted. It defines the design tokens the app consumes and a
- * small, deliberately generic set of component styles.
+ * small, deliberately generic set of component styles whose MARKUP follows
+ * the nanaOS component contracts (class names, data attributes, ARIA), so
+ * that mounting the real design system restyles the same DOM untouched.
  *
  * Load order (see index.html / run viewer):
  *   theme.css  ->  /nanaos/dist/nanaos.css (optional)  ->  styles.css
@@ -19,8 +21,9 @@
 
 /* Declare our layer FIRST so it is the lowest-priority cascade layer. A mounted
  * design system (nanaos.css uses @layer nanaos.*) is declared afterwards and
- * therefore wins; the app's own styles.css is unlayered and wins over all
- * layers. @font-face stays outside the layer (font registration is global). */
+ * therefore wins; the app's own styles.css layer is declared last and wins
+ * over both — which is why styles.css never styles design-system classes.
+ * @font-face stays outside the layer (font registration is global). */
 @layer agent-debate-fallback;
 
 /* ---------------------------------------------------------------- Fonts */
@@ -60,16 +63,22 @@
   --font-family-geist: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-family-geist-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --font-size-12: 12px;
+  --font-size-13: 13px;
   --font-size-14: 14px;
   --font-size-16: 16px;
   --font-size-20: 20px;
+  --font-size-24: 24px;
   --font-weight-400: 400;
+  --font-weight-500: 500;
+  --font-weight-600: 600;
   --font-weight-700: 700;
   --font-weight-800: 800;
   --line-height-10: 1;
   --line-height-12: 1.2;
   --line-height-14: 1.4;
   --line-height-16: 1.6;
+  --letter-spacing-0: 0;
+  --letter-spacing-012: 0.012em;
 
   /* Spacing */
   --spacing-4: 4px;
@@ -87,26 +96,43 @@
   --size-18: 18px;
   --size-20: 20px;
   --dimension-20: 20px;
+  --dimension-24: 24px;
+  --layout-64: 64px;
   --layout-72: 72px;
   --target-size-44: 44px;
 
   /* Radius & borders */
   --border-radius-6: 6px;
   --border-radius-8: 8px;
+  --border-radius-12: 12px;
+  --border-radius-16: 16px;
   --border-radius-20: 20px;
   --border-radius-800: 999px;
   --border-width-1: 1px;
   --border-width-2: 2px;
 
-  /* Surfaces & text (neutral palette, light/dark aware) */
-  --background-default: light-dark(#ffffff, #1b1b1d);
-  --background-dim1: light-dark(#f6f6f4, #161618);
-  --background-dim2: light-dark(#ececea, #242427);
+  /* Surfaces & text (neutral palette, light/dark aware).
+   * The dim ladder flips direction per theme (nanaOS ADR-053/079):
+   * light steps darker from white; dark anchors `default` as the darkest
+   * rung (the page) and each dim step is brighter, so nested surfaces
+   * come forward in both themes. */
+  --background-default: light-dark(#ffffff, #161618);
+  --background-dim1: light-dark(#f6f6f4, #1b1b1d);
+  --background-dim2: light-dark(#ececea, #1f1f22);
   --foreground-default: light-dark(#1c1c1e, #f2f2f3);
   --foreground-dim1: light-dark(#3b3b3f, #d2d2d6);
   --foreground-dim2: light-dark(#6b6b72, #9a9aa2);
   --foreground-dim3: light-dark(#8c8c93, #6f6f77);
-  --foreground-inverse: light-dark(#ffffff, #1b1b1d);
+  --foreground-inverse: light-dark(#ffffff, #1f1f22);
+
+  /* Lines */
+  --line-soft: light-dark(rgba(0, 0, 0, 0.12), rgba(255, 255, 255, 0.14));
+  --line-strong: light-dark(rgba(0, 0, 0, 0.24), rgba(255, 255, 255, 0.26));
+  /* Neutral border ladder (nanaOS dim scale) used by form controls: dim3 rest,
+   * dim4 hover, dim5 focus. Solid neutral grays mirror the design system. */
+  --border-dim3: light-dark(hsl(0 0% 81%), hsl(0 0% 23%));
+  --border-dim4: light-dark(hsl(0 0% 74%), hsl(0 0% 28%));
+  --border-dim5: light-dark(hsl(0 0% 62%), hsl(0 0% 39%));
 
   /* Actions */
   --action-link-fg: light-dark(#1a56db, #7aa8ff);
@@ -116,9 +142,12 @@
   /* Buttons */
   --button-background: transparent;
   --button-foreground: var(--foreground-default);
-  --button-border-color: light-dark(rgba(0, 0, 0, 0.24), rgba(255, 255, 255, 0.26));
+  --button-border-color: var(--line-strong);
   --button-border-width: var(--border-width-1);
   --button-hover-background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.08));
+  --action-danger-bg: var(--status-error);
+  --action-danger-bg-hover: light-dark(#b3141f, #da3633);
+  --action-danger-bg-active: light-dark(#8c1119, #b62324);
 
   /* States */
   --state-hover-background: light-dark(rgba(0, 0, 0, 0.05), rgba(255, 255, 255, 0.08));
@@ -144,6 +173,9 @@
   /* Elevation */
   --elevation-4: 0 1px 2px rgba(0, 0, 0, 0.08), 0 6px 16px rgba(0, 0, 0, 0.08);
   --elevation-6: 0 2px 4px rgba(0, 0, 0, 0.1), 0 12px 28px rgba(0, 0, 0, 0.12);
+
+  /* Surface used by floating popups (select/combobox/dialog) */
+  --popup-surface: light-dark(var(--background-default), var(--background-dim2));
 
   /* Motion */
   --enter-quick: 150ms ease;
@@ -173,14 +205,17 @@
 }
 
 /* ----------------------------------------------------------- Components */
-/* Wrapped in :where() so any mounted design system / styles.css wins. */
+/* Markup follows the nanaOS component contracts; styling here is a neutral
+ * approximation wrapped in :where() so any mounted design system wins. */
+
+/* Button */
 
 :where(.button) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--spacing-8);
-  min-height: 36px;
+  min-height: 40px;
   padding: 0 var(--spacing-14);
   border: var(--button-border-width) solid var(--button-border-color);
   border-radius: var(--border-radius-8);
@@ -196,14 +231,24 @@
   transition: background var(--enter-quick), border-color var(--enter-quick), color var(--enter-quick);
 }
 
+:where(.button--14) {
+  min-height: 36px;
+  font-size: var(--font-size-13);
+}
+
 :where(.button--round, .button--circle) {
   border-radius: var(--border-radius-800);
 }
 
 :where(.button--icon-only) {
+  width: 40px;
+  min-width: 40px;
+  padding: 0;
+}
+
+:where(.button--14.button--icon-only) {
   width: 36px;
   min-width: 36px;
-  padding: 0;
 }
 
 :where(.button--filled) {
@@ -217,9 +262,14 @@
   border-color: var(--button-border-color);
 }
 
-:where(.button--plain) {
+:where(.button--plain, .button--text) {
   background: transparent;
   border-color: transparent;
+}
+
+:where(.button--text) {
+  min-height: auto;
+  padding: 0;
 }
 
 :where(.button:hover:not(:disabled)) {
@@ -242,6 +292,32 @@
   cursor: not-allowed;
 }
 
+:where(.button--filled.button--destructive) {
+  background: var(--action-danger-bg);
+  color: var(--foreground-inverse);
+  border-color: transparent;
+}
+
+:where(.button--filled.button--destructive:hover:not(:disabled)) {
+  background: var(--action-danger-bg-hover);
+}
+
+:where(.button--outlined.button--destructive,
+.button--plain.button--destructive,
+.button--text.button--destructive) {
+  color: var(--status-error);
+}
+
+:where(.button--outlined.button--destructive,
+.button--plain.button--destructive,
+.button--text.button--destructive):hover:not(:disabled) {
+  background: light-dark(rgba(207, 34, 46, 0.08), rgba(248, 81, 73, 0.15));
+}
+
+:where(.button--outlined.button--destructive) {
+  border-color: var(--status-error);
+}
+
 :where(.button__icon) {
   display: inline-flex;
   flex: 0 0 auto;
@@ -249,57 +325,144 @@
 
 :where(.button__label) {
   display: inline-block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+/* Tag */
 
 :where(.tag) {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-4);
-  padding: 2px var(--spacing-8);
-  border-radius: var(--border-radius-800);
+  min-height: 24px;
+  padding: 2px var(--spacing-10);
+  border: var(--border-width-1) solid transparent;
+  border-radius: var(--border-radius-20);
   background: var(--background-dim2);
   color: var(--foreground-dim1);
   font-size: var(--font-size-12);
   font-weight: var(--font-weight-700);
   line-height: var(--line-height-12);
+  white-space: nowrap;
+}
+
+:where(.tag--12) {
+  min-height: 22px;
+  padding-inline: var(--spacing-8);
 }
 
 :where(.tag--rectangle) {
   border-radius: var(--border-radius-6);
 }
 
-:where(.input-field, .textarea-field, .switch-field) {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-6);
+:where(.tag--outlined) {
+  background: transparent;
+  border-color: var(--line-strong);
+}
+
+/* Badge (anchor-target indicator: dot / icon / number / short text) */
+
+:where(.badge) {
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  background: var(--status-error);
+  color: var(--foreground-inverse);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-700);
+  line-height: var(--line-height-10);
+  white-space: nowrap;
+}
+
+:where(.badge[data-kind="dot"]) {
+  inline-size: 8px;
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: var(--border-radius-800);
+}
+
+:where(.badge[data-kind="icon"], .badge[data-kind="number"], .badge[data-kind="text"]) {
+  min-inline-size: 16px;
+  min-block-size: 16px;
+  padding-inline: var(--spacing-4);
+  border-radius: var(--border-radius-800);
+}
+
+:where(.badge--alarm, .badge[data-tone="alarm"]) {
+  background: var(--status-error);
+  color: var(--foreground-inverse);
+}
+
+:where(.badge--available, .badge[data-tone="available"]) {
+  background: var(--status-success);
+  color: var(--foreground-inverse);
+}
+
+:where(.badge--unavailable, .badge[data-tone="unavailable"]) {
+  background: var(--foreground-dim3);
+  color: var(--foreground-inverse);
+}
+
+:where(.badge--primary, .badge[data-tone="primary"]) {
+  background: var(--action-link-fg);
+  color: var(--foreground-inverse);
+}
+
+:where(.badge__label) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Input */
+
+:where(.input-field, .textarea-field) {
+  display: grid;
+  gap: var(--spacing-8);
   min-width: 0;
 }
 
-:where(.switch-field) {
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--spacing-12);
+:where(.input-label, .textarea-label) {
+  font-family: var(--font-family-geist);
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-500);
+  line-height: var(--line-height-10);
+  letter-spacing: var(--letter-spacing-0);
+  color: var(--foreground-default);
 }
 
-:where(.input-label, .textarea-label) {
+:where([data-theme="dark"] .input-label, [data-theme="dark"] .textarea-label) {
+  font-weight: var(--font-weight-400);
+  letter-spacing: var(--letter-spacing-012);
+}
+
+:where(.textarea-supporting) {
+  font-family: var(--font-family-geist);
   font-size: var(--font-size-12);
-  font-weight: var(--font-weight-700);
+  font-weight: var(--font-weight-400);
+  line-height: var(--line-height-14);
+  letter-spacing: var(--letter-spacing-0);
   color: var(--foreground-dim2);
 }
 
-:where(.input, .textarea, .select) {
+:where(.input) {
   width: 100%;
-  border: var(--border-width-1) solid var(--button-border-color);
+  min-width: 0;
+  border: var(--border-width-1) solid var(--line-strong);
   border-radius: var(--border-radius-8);
   background: var(--background-default);
   color: var(--foreground-default);
   font: inherit;
   font-size: var(--font-size-14);
+  line-height: var(--line-height-14);
 }
 
-:where(.input, .select) {
-  min-height: 36px;
+:where(.input) {
+  min-height: 40px;
   padding: 0 var(--spacing-12);
 }
 
@@ -308,145 +471,1184 @@
 }
 
 :where(.textarea) {
-  min-height: 88px;
-  padding: var(--spacing-10) var(--spacing-12);
-  line-height: var(--line-height-14);
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--layout-64);
+  padding-block: var(--spacing-8);
+  padding-inline: var(--spacing-10);
+  border: var(--border-width-1) solid var(--border-dim3);
+  border-radius: var(--border-radius-8);
+  background: var(--background-default);
+  color: var(--foreground-default);
+  font-family: var(--font-family-geist);
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-400);
+  line-height: 1.6;
+  letter-spacing: var(--letter-spacing-0);
+  /* Auto-grow with content (shadcn parity); width:100% pins the inline axis so
+   * field-sizing only grows the block axis. Browsers without field-sizing fall
+   * back to the rows attribute. */
+  field-sizing: content;
   resize: vertical;
 }
 
-:where(.input:focus-visible, .textarea:focus-visible, .select:focus-visible) {
-  outline: none;
-  border-color: var(--state-focus);
-  box-shadow: 0 0 0 3px var(--state-focus-background);
+:where(.textarea)::placeholder {
+  color: var(--foreground-dim2);
+}
+
+:where(.textarea:focus-visible) {
+  outline: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+:where(.textarea:hover:not(:disabled, [data-disabled], [data-invalid], [aria-invalid="true"])) {
+  border-color: var(--border-dim4);
+}
+
+:where(.textarea:focus-visible:not(:disabled, [data-disabled], [data-invalid], [aria-invalid="true"])) {
+  border-color: var(--border-dim5);
+}
+
+:where(.textarea[data-invalid], .textarea[aria-invalid="true"]) {
+  border-color: var(--status-error);
+}
+
+:where(.textarea[data-invalid]:not(:focus-visible), .textarea[aria-invalid="true"]:not(:focus-visible)) {
+  outline: var(--border-width-1) solid var(--status-error);
+  outline-offset: 0;
+}
+
+:where(.textarea[data-invalid] + .textarea-supporting, .textarea[aria-invalid="true"] + .textarea-supporting) {
+  color: var(--status-error);
+}
+
+:where(.textarea[data-disabled], .textarea:disabled) {
+  color: var(--state-disabled-foreground);
+  background: var(--state-disabled-background);
+  cursor: not-allowed;
+  resize: none;
+}
+
+:where(.input)::placeholder {
+  color: var(--foreground-dim2);
+}
+
+:where(.input:focus-visible) {
+  outline: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
 }
 
 :where(.input-control) {
   position: relative;
-  display: flex;
-  align-items: center;
+  display: block;
+  min-width: 0;
+}
+
+:where(.input-control[data-icon="search"] .input) {
+  padding-inline-start: 38px;
 }
 
 :where(.input-icon) {
-  display: inline-flex;
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: var(--spacing-12);
+  display: grid;
+  place-items: center;
   color: var(--foreground-dim2);
+  font-size: 18px;
+  pointer-events: none;
 }
+
+/* Native select */
+
+:where(.native-select-field) {
+  display: grid;
+  gap: var(--spacing-8);
+  min-width: 0;
+}
+
+:where(.native-select-label) {
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-700);
+  color: var(--foreground-default);
+  line-height: var(--line-height-10);
+}
+
+:where(.native-select__wrap) {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+:where(.native-select) {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--spacing-32) 0 var(--spacing-12);
+  border: var(--border-width-1) solid var(--line-strong);
+  border-radius: var(--border-radius-8);
+  background: var(--background-default);
+  color: var(--foreground-default);
+  font: inherit;
+  font-size: var(--font-size-14);
+  appearance: none;
+  cursor: pointer;
+}
+
+:where(.native-select:focus-visible) {
+  outline: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+:where(.native-select__icon) {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: var(--spacing-10);
+  display: grid;
+  place-items: center;
+  color: var(--foreground-dim2);
+  transform: rotate(90deg);
+  pointer-events: none;
+}
+
+/* Switch */
+
+:where(.switch-field) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-10);
+  min-height: var(--target-size-44);
+  color: var(--foreground-default);
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-700);
+  cursor: pointer;
+}
+
+:where(.switch) {
+  display: inline-flex;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+:where(.switch:focus-visible) {
+  outline: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--border-radius-800);
+}
+
+:where(.switch__track) {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 32px;
+  height: 20px;
+  padding: 2px;
+  border-radius: var(--border-radius-800);
+  background: var(--line-strong);
+  transition: background var(--enter-quick);
+}
+
+:where(.switch__thumb) {
+  width: 16px;
+  height: 16px;
+  border-radius: var(--border-radius-800);
+  background: var(--background-default);
+  transform: translateX(0);
+  transition: transform var(--enter-quick);
+}
+
+:where(.switch__track[data-checked]) {
+  background: var(--action-primary-bg);
+}
+
+:where(.switch__thumb[data-checked]) {
+  transform: translateX(12px);
+}
+
+:where(.switch[data-size="sm"] .switch__track) {
+  width: 28px;
+  height: 16px;
+}
+
+:where(.switch[data-size="sm"] .switch__thumb) {
+  width: 12px;
+  height: 12px;
+}
+
+:where(.switch[data-size="sm"] .switch__thumb[data-checked]) {
+  transform: translateX(12px);
+}
+
+:where(.switch-field[data-disabled]) {
+  color: var(--state-disabled-foreground);
+  cursor: not-allowed;
+}
+
+/* Chip + chip group */
 
 :where(.chip) {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-6);
-  padding: var(--spacing-4) var(--spacing-10);
+  gap: var(--spacing-4);
+  max-width: 100%;
+  min-height: 36px;
+  padding: 0 var(--spacing-10);
+  border: var(--border-width-1) solid var(--line-strong);
   border-radius: var(--border-radius-800);
-  background: var(--background-dim2);
+  background: transparent;
   color: var(--foreground-default);
   font-size: var(--font-size-12);
   font-weight: var(--font-weight-700);
 }
 
-:where(.chip--outlined) {
-  background: transparent;
-  border: var(--border-width-1) solid var(--button-border-color);
+:where(.chip--size-14) {
+  min-height: 28px;
 }
 
-:where(.chip__end-icon, .chip-remove) {
+:where(button.chip) {
+  cursor: pointer;
+}
+
+:where(.chip[data-trailing="remove"]) {
+  padding-inline: var(--spacing-4);
+}
+
+:where(.chip__action) {
   display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  min-width: 0;
+  padding: 0 var(--spacing-4) 0 var(--spacing-6);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: default;
+}
+
+:where(.chip__label) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:where(.chip__remove) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--border-radius-800);
+  background: transparent;
   color: var(--foreground-dim2);
   cursor: pointer;
 }
 
-:where(.card) {
+:where(.chip__remove:hover) {
+  background: var(--state-hover-background);
+  color: var(--foreground-default);
+}
+
+:where(.chip__remove:focus-visible) {
+  outline: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color);
+  outline-offset: 1px;
+}
+
+:where(.chip__end-icon, .chip__selected-icon, .chip__icon) {
+  font-size: 16px;
+}
+
+:where(.chip-group) {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: var(--spacing-8);
-  padding: var(--spacing-16);
-  border: var(--border-width-1) solid var(--app-line, rgba(127, 127, 127, 0.2));
-  border-radius: var(--border-radius-8);
-  background: var(--background-default);
 }
 
-:where(.card__main) {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-12);
-}
+/* Select (button-triggered listbox) */
 
-:where(.card__identity) {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-4);
+:where(.select) {
+  position: relative;
+  display: grid;
+  gap: var(--spacing-8);
   min-width: 0;
 }
 
-:where(.card__copy) {
-  color: var(--foreground-dim2);
-  font-size: var(--font-size-12);
+:where(.select__label) {
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-700);
+  color: var(--foreground-default);
+  line-height: var(--line-height-10);
 }
 
-:where(.card__meta) {
+:where(.select__trigger) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-8);
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--spacing-12);
+  border: var(--border-width-1) solid var(--line-strong);
+  border-radius: var(--border-radius-8);
+  background: var(--background-default);
+  color: var(--foreground-default);
+  font: inherit;
+  font-size: var(--font-size-14);
+  text-align: start;
+  cursor: pointer;
+}
+
+:where(.select__trigger:focus-visible) {
+  outline: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+:where(.select__value) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:where(.select__value[data-placeholder]) {
+  color: var(--foreground-dim2);
+}
+
+:where(.select__indicator) {
+  flex: 0 0 auto;
+  color: var(--foreground-dim2);
+  transform: rotate(90deg);
+  transition: transform var(--enter-quick);
+}
+
+:where(.select__trigger[data-popup-open] .select__indicator) {
+  transform: rotate(270deg);
+}
+
+:where(.select__positioner) {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 100%;
+  z-index: 40;
+  display: none;
+}
+
+:where(.select__positioner[data-open]) {
+  display: block;
+}
+
+:where(.select__popup) {
+  margin-block-start: var(--spacing-4);
+  border: var(--border-width-1) solid var(--line-soft);
+  border-radius: var(--border-radius-8);
+  background: var(--popup-surface);
+  box-shadow: var(--elevation-6);
+  max-height: 240px;
+  overflow: auto;
+}
+
+:where(.select__listbox) {
+  display: grid;
+  padding: var(--spacing-4);
+}
+
+:where(.select__item) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-8);
+  width: 100%;
+  min-height: 36px;
+  padding: 0 var(--spacing-10);
+  border: 0;
+  border-radius: var(--border-radius-6);
+  background: transparent;
+  color: var(--foreground-default);
+  font: inherit;
+  font-size: var(--font-size-14);
+  text-align: start;
+  cursor: pointer;
+}
+
+:where(.select__item:hover, .select__item[data-highlighted]) {
+  background: var(--state-hover-background);
+}
+
+:where(.select__item[data-selected]) {
+  font-weight: var(--font-weight-700);
+}
+
+:where(.select__item-text) {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:where(.select__item-indicator) {
+  flex: 0 0 auto;
+  font-size: 16px;
+}
+
+/* Combobox (input + filterable listbox) */
+
+:where(.combobox) {
+  position: relative;
+  display: grid;
+  gap: var(--spacing-8);
+  min-width: 0;
+}
+
+:where(.combobox-label) {
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-700);
+  color: var(--foreground-default);
+  line-height: var(--line-height-10);
+}
+
+:where(.combobox__control) {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+:where(.combobox__input) {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 40px 0 var(--spacing-12);
+  border: var(--border-width-1) solid var(--line-strong);
+  border-radius: var(--border-radius-8);
+  background: var(--background-default);
+  color: var(--foreground-default);
+  font: inherit;
+  font-size: var(--font-size-14);
+}
+
+:where(.combobox__input)::placeholder {
+  color: var(--foreground-dim2);
+}
+
+:where(.combobox__input:focus-visible) {
+  outline: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
+:where(.combobox__actions) {
+  position: absolute;
+  inset-inline-end: var(--spacing-6);
+  display: flex;
+  align-items: center;
+}
+
+:where(.combobox__button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--border-radius-800);
+  background: transparent;
+  color: var(--foreground-dim2);
+  cursor: pointer;
+}
+
+:where(.combobox__button:hover) {
+  background: var(--state-hover-background);
+  color: var(--foreground-default);
+}
+
+:where(.combobox__trigger .icon) {
+  transform: rotate(90deg);
+  transition: transform var(--enter-quick);
+}
+
+:where(.combobox__trigger[data-popup-open] .icon) {
+  transform: rotate(270deg);
+}
+
+:where(.combobox__positioner) {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 100%;
+  z-index: 40;
+  display: none;
+}
+
+:where(.combobox__positioner[data-open]) {
+  display: block;
+}
+
+:where(.combobox__popup) {
+  margin-block-start: var(--spacing-4);
+  border: var(--border-width-1) solid var(--line-soft);
+  border-radius: var(--border-radius-8);
+  background: var(--popup-surface);
+  box-shadow: var(--elevation-6);
+  max-height: 240px;
+  overflow: auto;
+}
+
+:where(.combobox__listbox) {
+  display: grid;
+  padding: var(--spacing-4);
+}
+
+:where(.combobox__option) {
   display: flex;
   align-items: center;
   gap: var(--spacing-8);
+  min-height: 36px;
+  padding: var(--spacing-6) var(--spacing-10);
+  border-radius: var(--border-radius-6);
+  cursor: pointer;
 }
 
-:where(.card__status-icon) {
-  display: inline-flex;
+:where(.combobox__option:hover, .combobox__option[data-highlighted]) {
+  background: var(--state-hover-background);
 }
 
-:where(.list) {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+:where(.combobox__option[data-selected]) {
+  font-weight: var(--font-weight-700);
 }
 
-:where(.panel) {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-12);
+:where(.combobox__option-text) {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-14);
+}
+
+:where(.combobox__option-indicator) {
+  flex: 0 0 auto;
+  font-size: 16px;
+}
+
+:where(.combobox__empty) {
+  padding: var(--spacing-12);
+  color: var(--foreground-dim2);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-700);
+}
+
+/* Dialog */
+
+:where(.dialog-viewport) {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
   padding: var(--spacing-16);
-  border: var(--border-width-1) solid var(--app-line, rgba(127, 127, 127, 0.2));
-  border-radius: var(--border-radius-8);
-  background: var(--app-panel, var(--background-default));
-  box-shadow: var(--app-shadow, var(--elevation-4));
 }
 
-:where(.panel-head) {
+:where(.dialog-viewport[data-open]) {
   display: flex;
-  align-items: flex-start;
+}
+
+:where(.dialog-backdrop) {
+  position: fixed;
+  inset: 0;
+  display: none;
+  background: rgb(0 0 0 / 44%);
+  backdrop-filter: blur(8px);
+}
+
+:where(.dialog-backdrop[data-open]) {
+  display: block;
+}
+
+:where(.dialog-popup) {
+  position: relative;
+  display: none;
+  width: min(480px, calc(100dvw - 32px));
+  max-height: calc(100dvh - 64px);
+  overflow: auto;
+  padding: var(--spacing-16);
+  border: var(--border-width-1) solid var(--line-soft);
+  border-radius: var(--border-radius-16);
+  background: var(--popup-surface);
+  box-shadow: var(--elevation-6);
+  color: var(--foreground-default);
+}
+
+:where(.dialog-popup[data-open]) {
+  display: grid;
+  gap: var(--spacing-16);
+  align-content: start;
+}
+
+:where(.dialog-popup[data-size="320"]) {
+  width: min(320px, calc(100dvw - 32px));
+}
+
+/* data-scroll="viewport": the viewport scrolls and the popup stays
+ * overflow-visible so nested popups (select/combobox) are not clipped. */
+:where(.dialog-viewport[data-scroll="viewport"]) {
+  overflow: auto;
+}
+
+:where(.dialog-popup[data-scroll="viewport"]) {
+  max-height: none;
+  overflow: visible;
+}
+
+:where(.dialog-popup:focus-visible) {
+  outline: none;
+}
+
+:where(.dialog-header) {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: var(--spacing-12);
 }
 
-:where(.title-body) {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-4);
-  min-width: 0;
-}
-
-:where(.title-body__title) {
+:where(.dialog-title) {
   margin: 0;
   font-size: var(--font-size-16);
   font-weight: var(--font-weight-800);
   line-height: var(--line-height-12);
 }
 
-:where(.title-body__body) {
+:where(.dialog-close) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--border-radius-800);
+  background: transparent;
+  color: var(--foreground-dim1);
+  cursor: pointer;
+}
+
+:where(.dialog-close:hover) {
+  background: var(--state-hover-background);
+  color: var(--foreground-default);
+}
+
+:where(.dialog-close:focus-visible) {
+  outline: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color);
+  outline-offset: 1px;
+}
+
+:where(.dialog-description) {
   margin: 0;
   color: var(--foreground-dim2);
-  font-size: var(--font-size-12);
+  font-size: var(--font-size-13);
   line-height: var(--line-height-14);
 }
 
-:where(.button-row) {
+:where(.dialog-body) {
+  display: grid;
+  gap: var(--spacing-16);
+}
+
+:where(.dialog-actions) {
   display: flex;
-  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--spacing-8);
 }
 
-:where(.visually-hidden),
+/* List */
+
+:where(.list) {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+:where(.list[data-frame="outlined"]) {
+  border: var(--border-width-1) solid var(--line-soft);
+  border-radius: var(--border-radius-12);
+  background: var(--background-default);
+  overflow: hidden;
+}
+
+:where(.list__item) {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-10);
+  min-width: 0;
+  padding-block: var(--spacing-12);
+  padding-inline: var(--spacing-16);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  text-decoration: none;
+}
+
+/* Dividers and density mirror the nanaos list API: dividers are on by
+ * default (opt out with data-divider="none"), density 12/14/16/20 sets
+ * padding-block only. Canonical source: design-system/dist/nanaos.css —
+ * mirror that file, do not invent variants here. */
+:where(.list__item + .list__item) {
+  border-block-start: var(--border-width-1) solid var(--line-soft);
+}
+
+:where(.list[data-divider="none"] .list__item) {
+  border-block-start: 0;
+}
+
+:where(.list[data-density="12"] .list__item) {
+  padding-block: var(--spacing-12);
+}
+
+:where(.list[data-density="14"] .list__item) {
+  padding-block: var(--spacing-14);
+}
+
+:where(.list[data-density="16"] .list__item) {
+  padding-block: var(--spacing-16);
+}
+
+:where(.list[data-density="20"] .list__item) {
+  padding-block: var(--spacing-20);
+}
+
+:where(a.list__item:hover, button.list__item:hover) {
+  background: var(--state-hover-background);
+  cursor: pointer;
+}
+
+:where(a.list__item:focus-visible, button.list__item:focus-visible) {
+  outline: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color);
+  outline-offset: -2px;
+}
+
+:where(.list__item-icon) {
+  flex: 0 0 auto;
+  color: var(--foreground-dim2);
+  font-size: 18px;
+}
+
+:where(.list__item-label) {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-13);
+}
+
+:where(.list[data-size="14"] .list__item-label) {
+  font-size: var(--font-size-13);
+}
+
+:where(.list__item-end) {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+}
+
+/* Spinner */
+
+:where(.spinner) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-6);
+  color: var(--foreground-dim2);
+  font-size: var(--font-size-12);
+}
+
+:where(.spinner__icon) {
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border: var(--border-width-2) solid var(--line-soft);
+  border-block-start-color: var(--foreground-default);
+  border-radius: var(--border-radius-800);
+  animation: fallback-spinner-spin 0.8s linear infinite;
+}
+
+:where(.spinner[data-size="14"] .spinner__icon) {
+  width: 14px;
+  height: 14px;
+}
+
+:where(.spinner[data-label-hidden] .spinner__label) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes fallback-spinner-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* Empty state */
+
+:where(.empty) {
+  display: grid;
+  place-items: center;
+  padding: var(--spacing-24) var(--spacing-16);
+  border: var(--border-width-1) dashed var(--line-strong);
+  border-radius: var(--border-radius-8);
+  text-align: center;
+}
+
+:where(.empty__header) {
+  display: grid;
+  gap: var(--spacing-8);
+  justify-items: center;
+}
+
+:where(.empty__media) {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--border-radius-800);
+  background: var(--background-dim2);
+  color: var(--foreground-dim2);
+}
+
+:where(.empty__title) {
+  color: var(--foreground-dim1);
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-700);
+}
+
+:where(.empty__description) {
+  margin: 0;
+  color: var(--foreground-dim2);
+  font-size: var(--font-size-12);
+}
+
+/* Card */
+
+:where(.card) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-10);
+  padding: var(--spacing-16);
+  border: var(--border-width-1) solid var(--line-soft);
+  border-radius: var(--border-radius-8);
+  /* Resting surface: white in light, one rung above the page in dark
+   * (ADR-079 — light front-anchored, dark back-anchored). */
+  background: light-dark(var(--background-default), var(--background-dim1));
+}
+
+:where(.card--outlined) {
+  border-color: var(--line-soft);
+}
+
+:where(.card[data-density="12"]) {
+  padding: var(--spacing-12);
+}
+
+/* Typography compositions (text stacks; CSS-only, no JS) */
+
+.typography-headline-24 {
+  font-family: var(--font-family-geist);
+  font-size: var(--font-size-24);
+  line-height: var(--line-height-14);
+  /* App themes via light-dark(), not [data-theme]; the design system's dark
+   * tuning (weight 500 / letter-spacing-012) is mirrored that way here. */
+  font-weight: light-dark(var(--font-weight-600), var(--font-weight-500));
+  letter-spacing: light-dark(var(--letter-spacing-0), var(--letter-spacing-012));
+}
+
+:where(.title-body, .title-body-tag) {
+  display: grid;
+  gap: var(--spacing-8);
+  min-width: 0;
+  align-content: start;
+}
+
+:where(.title-body__title, .title-body-tag__title) {
+  display: block;
+  margin: 0;
+  color: var(--foreground-default);
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-800);
+  line-height: var(--line-height-12);
+  overflow-wrap: anywhere;
+}
+
+:where(.title-body__body, .title-body-tag__body) {
+  display: block;
+  margin: 0;
+  color: var(--foreground-dim2);
+  font-size: var(--font-size-14);
+  line-height: var(--line-height-14);
+  overflow-wrap: anywhere;
+}
+
+:where(.title-body[data-title-size="14"], .title-body-tag[data-title-size="14"]) {
+  gap: var(--spacing-14);
+}
+
+:where(.title-body-tag__tag-row) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-6);
+  align-items: center;
+  justify-self: start;
+}
+
+/* List-context compositions & variants. Inside a list the nanaos recipe
+ * retunes the stacks: title drops to weight 500, body matches the list
+ * size, emphasis dims the whole stack, icons ride a 24px column. Canonical
+ * source: design-system/dist/nanaos.css — mirror, do not invent. */
+
+:where(.list .title-body) {
+  gap: var(--spacing-4);
+  align-content: start;
+  max-inline-size: none;
+}
+
+:where(.list .title-body__title) {
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-500);
+  line-height: var(--line-height-16);
+  /* App toggles theme via light-dark(), not [data-theme]; the design system's
+   * dark-only tracking bump (letter-spacing-012) is mirrored that way here. */
+  letter-spacing: light-dark(var(--letter-spacing-0), var(--letter-spacing-012));
+  text-box: trim-both cap alphabetic;
+}
+
+:where(.list .title-body__body) {
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-400);
+  line-height: var(--line-height-14);
+  letter-spacing: light-dark(var(--letter-spacing-0), var(--letter-spacing-012));
+  text-box: trim-both cap alphabetic;
+}
+
+:where(.list[data-size="14"] .title-body__title, .list[data-size="14"] .title-body__body) {
+  font-size: var(--font-size-14);
+}
+
+:where(.list .list__item-icon.icon) {
+  font-size: var(--dimension-24);
+}
+
+:where(.list[data-icon="start"] .list__item:has(> .list__item-icon), .list[data-icon="both"] .list__item:has(> .list__item-icon)) {
+  align-items: start;
+}
+
+:where(.list[data-emphasis="dim2"] .list__item, .list[data-emphasis="dim2"] .list__item .list__item-icon) {
+  color: var(--foreground-dim2);
+}
+
+:where(.list[data-emphasis="dim2"] .list__item .title-body__title) {
+  color: var(--foreground-dim2);
+}
+
+:where(.list[data-emphasis="dim2"] .list__item .title-body__body) {
+  color: var(--foreground-dim3);
+}
+
+/* data-title-size="14" retunes the stack. In nanaos.css these selectors are
+ * (0,3,0) and beat the (0,1,0) list-context rules; with zero-specificity
+ * :where() rules that precedence is expressed by source order, so this block
+ * must stay below the .list rules above. */
+
+:where(.title-body[data-title-size="14"] .title-body__title, .title-body-tag[data-title-size="14"] .title-body-tag__title) {
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-500);
+  line-height: var(--line-height-16);
+  letter-spacing: light-dark(var(--letter-spacing-0), var(--letter-spacing-012));
+}
+
+:where(.title-body[data-title-size="14"] .title-body__body, .title-body-tag[data-title-size="14"] .title-body-tag__body) {
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-400);
+  line-height: var(--line-height-14);
+  letter-spacing: light-dark(var(--letter-spacing-0), var(--letter-spacing-012));
+}
+
+/* ----------------------------------------------------------- Hover card */
+/* Fallback subset of the nanaOS hover-card recipe
+ * (design-system/scss/components/hover-card/_hover-card.scss). app.js drives
+ * the Base UI presence attributes ([data-open], [data-popup-open],
+ * [data-starting-style], [data-ending-style]) on the static markup.
+ * The full motion matrix (overlay/quick/paced tokens) collapses to
+ * --enter-quick here; the popup surface comes from the data-surface
+ * auto-leveling ladder, with --popup-surface as the un-themed fallback. */
+
+:where(.hover-card) {
+  position: relative;
+  display: inline-block;
+  max-inline-size: 100%;
+}
+
+:where(.hover-card__trigger) {
+  color: var(--action-link-fg);
+  text-decoration-line: underline;
+  text-underline-offset: 0.16em;
+}
+
+:where(.hover-card__trigger.button) {
+  color: var(--button-foreground);
+  text-decoration: none;
+}
+
+:where(.hover-card__positioner) {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-block-end: auto;
+  inset-inline-start: 50%;
+  inset-inline-end: auto;
+  z-index: 40;
+  inline-size: min(320px, calc(100vw - var(--spacing-32)));
+
+  --hover-card-shift-x: 0%;
+  --hover-card-shift-y: 0%;
+
+  display: none;
+  padding-block-start: var(--spacing-8);
+  translate: calc(-50% + var(--hover-card-shift-x)) var(--hover-card-shift-y);
+}
+
+:where(.hover-card__positioner[data-side="top"]) {
+  inset-block-start: auto;
+  inset-block-end: 100%;
+  padding-block-start: 0;
+  padding-block-end: var(--spacing-8);
+}
+
+:where(.hover-card__positioner[data-side="right"]) {
+  inset-block-start: 50%;
+  inset-block-end: auto;
+  inset-inline-start: 100%;
+  inset-inline-end: auto;
+  padding-block-start: 0;
+  padding-inline-start: var(--spacing-8);
+  translate: var(--hover-card-shift-x) calc(-50% + var(--hover-card-shift-y));
+}
+
+:where(.hover-card__positioner[data-side="left"]) {
+  inset-block-start: 50%;
+  inset-block-end: auto;
+  inset-inline-start: auto;
+  inset-inline-end: 100%;
+  padding-block-start: 0;
+  padding-inline-end: var(--spacing-8);
+  translate: var(--hover-card-shift-x) calc(-50% + var(--hover-card-shift-y));
+}
+
+:where(.hover-card__positioner[data-open]) {
+  display: block;
+}
+
+/* Invisible safe triangles keep the hover path alive between trigger and popup. */
+:where(.hover-card__positioner)::before {
+  content: "";
+  position: absolute;
+  pointer-events: auto;
+}
+
+:where(.hover-card__positioner[data-side="bottom"], .hover-card__positioner:not([data-side]))::before {
+  inset-inline: 0;
+  inset-block-start: calc(var(--spacing-8) * -1);
+  block-size: var(--spacing-16);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+:where(.hover-card__positioner[data-side="top"])::before {
+  inset-inline: 0;
+  inset-block-end: calc(var(--spacing-8) * -1);
+  block-size: var(--spacing-16);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
+:where(.hover-card__positioner[data-side="right"])::before {
+  inset-block: 0;
+  inset-inline-start: calc(var(--spacing-8) * -1);
+  inline-size: var(--spacing-16);
+  clip-path: polygon(0 50%, 100% 0, 100% 100%);
+}
+
+:where(.hover-card__positioner[data-side="left"])::before {
+  inset-block: 0;
+  inset-inline-end: calc(var(--spacing-8) * -1);
+  inline-size: var(--spacing-16);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+:where(.hover-card__popup) {
+  position: relative;
+  display: grid;
+  gap: var(--spacing-8);
+  padding: var(--spacing-16);
+  border: var(--border-width-1) solid var(--border-dim3);
+  border-radius: var(--border-radius-8);
+  background: var(--popup-surface);
+  color: var(--foreground-default);
+  box-shadow: var(--elevation-6);
+  overflow-wrap: anywhere;
+  opacity: 1;
+  transform: translate(0, 0);
+  transition:
+    opacity var(--enter-quick),
+    transform var(--enter-quick);
+}
+
+:where(.hover-card__positioner[data-starting-style], .hover-card__positioner[data-ending-style]) :where(.hover-card__popup) {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+:where(.hover-card__positioner[data-side="top"][data-starting-style], .hover-card__positioner[data-side="top"][data-ending-style]) :where(.hover-card__popup) {
+  transform: translateY(-4px);
+}
+
+:where(.hover-card__positioner[data-side="right"][data-starting-style], .hover-card__positioner[data-side="right"][data-ending-style]) :where(.hover-card__popup) {
+  transform: translateX(4px);
+}
+
+:where(.hover-card__positioner[data-side="left"][data-starting-style], .hover-card__positioner[data-side="left"][data-ending-style]) :where(.hover-card__popup) {
+  transform: translateX(-4px);
+}
+
+:where(.hover-card__title) {
+  margin: 0;
+  color: var(--foreground-default);
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-700);
+  line-height: var(--line-height-14);
+}
+
+:where(.hover-card__description) {
+  margin: 0;
+  color: var(--foreground-dim1);
+  font-size: var(--font-size-14);
+  line-height: var(--line-height-16);
+}
+
+/* Utility */
+
+  :where(.visually-hidden),
 :where(.input-label--visually-hidden) {
   position: absolute !important;
   width: 1px;
@@ -457,6 +1659,48 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(.spinner__icon) {
+    animation: none;
+  }
+
+  :where(.select__indicator, .combobox__trigger .icon, .switch__track, .switch__thumb, .button) {
+    transition: none;
+  }
+
+  :where(.hover-card__popup) {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* -------------------------------------------------- Fallback Surface Auto-Leveling */
+:where([data-theme="light"]) :where([data-surface]) {
+  background: var(--background-default);
+}
+:where([data-theme="light"]) :where([data-surface]:has([data-surface])) {
+  background: var(--background-dim1);
+}
+:where([data-theme="light"]) :where([data-surface]:has([data-surface] [data-surface])) {
+  background: var(--background-dim2);
+}
+:where([data-theme="light"]) :where([data-surface]:has([data-surface] [data-surface] [data-surface])) {
+  background: var(--background-dim3);
+}
+
+:where([data-theme="dark"]) :where([data-surface]) {
+  background: var(--background-default);
+}
+:where([data-theme="dark"]) :where([data-surface] [data-surface]) {
+  background: var(--background-dim1);
+}
+:where([data-theme="dark"]) :where([data-surface] [data-surface] [data-surface]) {
+  background: var(--background-dim2);
+}
+:where([data-theme="dark"]) :where([data-surface] [data-surface] [data-surface] [data-surface]) {
+  background: var(--background-dim3);
 }
 
 } /* end @layer agent-debate-fallback */

@@ -1,9 +1,28 @@
+/*
+ * Agent Debate — app layout layer
+ * ------------------------------------------------------------------
+ * This file styles ONLY app-invented classes (shell, rails, panels,
+ * transcript, status accents). Design-system component classes (.button,
+ * .tag, .input, .select, .combobox, .dialog-*, .list, .chip, .switch,
+ * typography compositions, ...) are never restyled here — their look comes
+ * from theme.css (fallback) or the mounted nanaOS design system, so the
+ * same markup renders correctly in both setups.
+ */
 @layer agent-debate {
   :root {
     color-scheme: light dark;
-    --app-page: var(--background-dim1, #f5f5f2);
-    --app-panel: var(--background-default, #fff);
-    --app-panel-alt: var(--background-dim2, #f2f2f2);
+    /* Surface elevation follows the nanaOS convention (ADR-079), asymmetric
+     * per theme because light has a white ceiling. The app has a fixed
+     * three-level surface tree: page → panel → leaf (workflow steps, agent
+     * cards, run items, messages, dialogs).
+     *   light — front-anchored: leaves are always white and each wrapper is
+     *           one dim rung darker (page/panel/leaf = dim2/dim1/white);
+     *   dark  — back-anchored: the page anchors on --background-default (the
+     *           darkest rung) and each level inward climbs one rung brighter
+     *           (page/panel/leaf = default/dim1/dim2). */
+    --app-page: light-dark(var(--background-dim2, #ececea), var(--background-default, #161618));
+    --app-panel: var(--background-dim1, #f5f5f2);
+    --app-raised: light-dark(var(--background-default, #fff), var(--background-dim2, #1f1f22));
     --app-line: color-mix(in oklab, var(--foreground-default) 14%, transparent);
     --app-line-strong: color-mix(in oklab, var(--foreground-default) 28%, transparent);
     --app-shadow: var(--elevation-4, 0 1px 2px rgb(0 0 0 / 10%), 0 10px 28px rgb(0 0 0 / 8%));
@@ -26,58 +45,8 @@
     min-block-size: 100dvh;
     margin: 0;
     overflow: hidden;
-    background: var(--app-page);
     color: var(--foreground-default);
     font-family: var(--font-family-geist);
-  }
-
-  button,
-  input,
-  select,
-  textarea {
-    font: inherit;
-  }
-
-  h1,
-  h2,
-  h3,
-  p {
-    margin: 0;
-  }
-
-  .visually-hidden,
-  .input-label--visually-hidden {
-    position: absolute !important;
-    inline-size: 1px !important;
-    block-size: 1px !important;
-    max-inline-size: 1px !important;
-    max-block-size: 1px !important;
-    margin: -1px !important;
-    padding: 0 !important;
-    overflow: hidden !important;
-    border: 0 !important;
-    clip: rect(0 0 0 0) !important;
-    clip-path: inset(50%) !important;
-    white-space: nowrap !important;
-  }
-
-  .icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-family: "Material Symbols Outlined";
-    font-size: 18px;
-    font-style: normal;
-    font-weight: 400;
-    line-height: 1;
-    text-transform: none;
-    letter-spacing: 0;
-    font-feature-settings: "liga";
-    font-variation-settings:
-      "FILL" 0,
-      "wght" 450,
-      "GRAD" 0,
-      "opsz" 20;
   }
 
   .app-shell {
@@ -85,6 +54,8 @@
     grid-template-rows: auto minmax(0, 1fr);
     min-block-size: 100dvh;
   }
+
+  /* ------------------------------------------------------------ Topbar */
 
   .topbar {
     display: flex;
@@ -94,21 +65,13 @@
     min-block-size: 72px;
     padding: var(--spacing-16) var(--spacing-20);
     border-block-end: var(--border-width-1) solid var(--app-line);
-    background: color-mix(in oklab, var(--background-default) 94%, transparent);
+    background: color-mix(in oklab, var(--app-panel) 94%, transparent);
     backdrop-filter: blur(16px);
   }
 
-  .brand,
-  .topbar-status,
-  .button-row,
-  .agent-card__main,
-  .agent-card__meta,
-  .message-title {
+  .brand {
     display: flex;
     align-items: center;
-  }
-
-  .brand {
     gap: var(--spacing-12);
     min-inline-size: 0;
   }
@@ -126,281 +89,34 @@
     min-inline-size: 0;
   }
 
-  .brand-copy h1 {
-    overflow: hidden;
-    font-size: var(--font-size-20);
-    line-height: var(--line-height-12);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .brand-copy p,
-  .panel-head p:not(.title-body__body),
-  .supporting,
-  .agent-card p,
-  .workflow-band p,
-  .debate-stage p,
-  .composer p {
-    color: var(--foreground-dim2);
-    font-size: var(--font-size-12);
-    line-height: var(--line-height-14);
-  }
-
   .topbar-status {
+    display: flex;
+    align-items: center;
     justify-content: flex-end;
     gap: var(--spacing-10);
     min-inline-size: 0;
   }
 
-  .button {
-    --button-foreground: var(--foreground-inverse);
-    --button-background: var(--action-primary-bg);
-    --button-hover-background: var(--action-primary-bg-hover);
-    --button-border-width: 0;
-    --button-border-color: transparent;
+  /* Status readouts: DS dot Badge carries the tone, the adjacent text
+   * carries the meaning. These wrappers only lay the two out. */
+
+  .debate-status,
+  .agent-status {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: var(--spacing-8);
-    min-inline-size: 0;
-    min-block-size: 36px;
-    padding: 0 var(--spacing-14);
-    border: var(--button-border-width) solid var(--button-border-color);
-    border-radius: var(--border-radius-8);
-    appearance: none;
-    background: var(--button-background);
-    color: var(--button-foreground);
-    cursor: pointer;
-    font-size: var(--font-size-14);
-    font-weight: var(--font-weight-700);
-    line-height: var(--line-height-10);
-    text-decoration: none;
-    white-space: nowrap;
-    transition:
-      background-color var(--enter-quick),
-      border-color var(--enter-quick),
-      color var(--enter-quick);
-  }
-
-  .button:hover:not(:disabled) {
-    background: var(--button-hover-background);
-  }
-
-  .button:focus-visible,
-  .chip:focus-visible,
-  .skill-option:focus-visible,
-  .run-link:focus-visible {
-    outline: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color);
-    outline-offset: var(--focus-ring-offset);
-  }
-
-  .button:disabled {
-    background: var(--state-disabled-background);
-    color: var(--state-disabled-foreground);
-    cursor: not-allowed;
-  }
-
-  .button--outlined {
-    --button-foreground: var(--foreground-default);
-    --button-background: transparent;
-    --button-hover-background: var(--state-hover-background);
-    --button-border-width: var(--border-width-1);
-    --button-border-color: var(--app-line-strong);
-    border-width: var(--border-width-1);
-    border-color: var(--app-line-strong);
-  }
-
-  .button--plain {
-    --button-foreground: var(--foreground-default);
-    --button-background: transparent;
-    --button-hover-background: var(--state-hover-background);
-    --button-border-width: 0;
-    border-width: 0;
-  }
-
-  .button--filled {
-    border-width: 0;
-  }
-
-  .button--round {
-    border-radius: var(--border-radius-800);
-  }
-
-  .button--circle,
-  .button--icon-only {
-    flex: 0 0 40px;
-    inline-size: 40px;
-    block-size: 40px;
-    padding: 0;
-    border-radius: var(--border-radius-800);
-  }
-
-  .button__icon {
-    flex: 0 0 auto;
-  }
-
-  .button__label {
-    min-inline-size: 0;
-    overflow: visible;
-    text-overflow: clip;
-  }
-
-  .tag {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-4);
-    min-block-size: 24px;
-    padding: 0 var(--spacing-10);
-    border: var(--border-width-1) solid transparent;
-    border-radius: var(--border-radius-20);
-    background: var(--background-dim2);
-    color: var(--foreground-default);
+    gap: var(--spacing-6);
+    color: var(--foreground-dim1);
     font-size: var(--font-size-12);
     font-weight: var(--font-weight-700);
     line-height: var(--line-height-10);
     white-space: nowrap;
   }
 
-  .tag--12 {
-    min-block-size: 22px;
-    padding-inline: var(--spacing-8);
-  }
-
-  .tag--rectangle {
-    border-radius: var(--border-radius-6);
-  }
-
-  .debate-status::before {
-    content: "";
-    inline-size: 7px;
-    block-size: 7px;
-    border-radius: 999px;
-    background: currentColor;
-  }
-
-  .debate-status.is-ready {
-    background: var(--status-warning-container);
-    color: var(--status-warning-fg, #6b3b00);
-  }
-
-  .debate-status.is-starting,
-  .debate-status.is-running {
-    background: var(--state-focus-background);
-    color: var(--action-link-fg);
-  }
-
-  .debate-status.is-running::before {
+  .debate-status.is-running .badge {
     animation: debate-pulse 1.15s ease-in-out infinite;
   }
 
-  .debate-status.is-done {
-    background: var(--status-success-container);
-    color: var(--status-success);
-  }
-
-  .debate-status.is-error {
-    background: var(--status-error-container);
-    color: var(--status-error);
-  }
-
-  .input-field,
-  .textarea-field {
-    display: grid;
-    gap: var(--spacing-8);
-    min-inline-size: 0;
-  }
-
-  .input-label,
-  .textarea-label {
-    display: block;
-    color: var(--foreground-default);
-    font-size: var(--font-size-14);
-    font-weight: var(--font-weight-700);
-    line-height: var(--line-height-10);
-  }
-
-  .input,
-  .textarea {
-    inline-size: 100%;
-    min-inline-size: 0;
-    border: var(--border-width-1) solid var(--app-line-strong);
-    border-radius: var(--border-radius-8);
-    background: color-mix(in oklab, var(--background-default) 88%, var(--background-dim2));
-    color: var(--foreground-default);
-    font-size: var(--font-size-14);
-    font-weight: var(--font-weight-400);
-    line-height: var(--line-height-14);
-    outline: none;
-  }
-
-  .input {
-    min-block-size: 40px;
-    padding: 0 var(--spacing-12);
-  }
-
-  select.input {
-    padding-inline-end: var(--spacing-32);
-  }
-
-  .textarea {
-    min-block-size: var(--layout-72);
-    padding: var(--spacing-10) var(--spacing-12);
-    resize: vertical;
-  }
-
-  .input::placeholder,
-  .textarea::placeholder {
-    color: var(--foreground-dim2);
-  }
-
-  .input:hover:not(:disabled),
-  .textarea:hover:not(:disabled) {
-    border-color: var(--app-line-strong);
-  }
-
-  .input:focus-visible,
-  .textarea:focus-visible {
-    border-color: var(--app-line-strong);
-    outline: var(--focus-ring-width) var(--focus-ring-style) var(--focus-ring-color);
-    outline-offset: var(--focus-ring-offset);
-  }
-
-  .textarea.mono,
-  .message pre {
-    font-family: var(--font-family-geist-mono);
-  }
-
-  .input-control {
-    position: relative;
-    display: block;
-    min-inline-size: 0;
-  }
-
-  .input-control .input {
-    padding-inline-start: 38px;
-  }
-
-  .input-icon {
-    position: absolute;
-    inset-block: 0;
-    inset-inline-start: var(--spacing-12);
-    display: grid;
-    place-items: center;
-    inline-size: 16px;
-    color: var(--foreground-dim2);
-    pointer-events: none;
-  }
-
-  .input-icon svg {
-    inline-size: 16px;
-    block-size: 16px;
-    fill: none;
-    stroke: currentColor;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-width: 2;
-  }
+  /* --------------------------------------------------------- Workspace */
 
   .workspace {
     display: grid;
@@ -441,31 +157,19 @@
     padding: var(--spacing-16);
     border: var(--border-width-1) solid var(--app-line);
     border-radius: var(--border-radius-8);
-    background: var(--app-panel);
     box-shadow: var(--app-shadow);
   }
 
-  .panel-head,
-  .settings-head,
-  .settings-actions {
+  .panel-head {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: var(--spacing-12);
-  }
-
-  .panel-head {
     margin-block-end: var(--spacing-16);
   }
 
   .panel-head > .button {
     flex: 0 0 auto;
-  }
-
-  .panel-head h2:not(.title-body__title),
-  .settings-head h2 {
-    font-size: var(--font-size-16);
-    line-height: var(--line-height-12);
   }
 
   .project-panel,
@@ -481,14 +185,15 @@
     inset-block-start: 0;
   }
 
-  .composer > *,
-  .composer :where(.input-field, .textarea-field, .skill-picker, .button-row, .supporting) {
+  .composer > * {
     min-inline-size: 0;
     max-inline-size: 100%;
     inline-size: 100%;
   }
 
   .button-row {
+    display: flex;
+    align-items: center;
     gap: var(--spacing-8);
   }
 
@@ -496,32 +201,20 @@
     flex: 1 1 0;
   }
 
-  .button-row > .button,
-  .agent-edit,
-  .workflow-save-button {
+  .button-row > .button {
     inline-size: 100%;
   }
 
-  .workflow-step--editing .workflow-save-button {
-    inline-size: auto;
-    min-inline-size: 86px;
-    justify-self: end;
-  }
-
-  .button-row .button__label,
-  .agent-edit .button__label,
-  .workflow-save-button .button__label,
-  .settings-done .button__label {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .is-running {
+  .is-running.button {
     --button-background: var(--status-error);
     --button-hover-background: #a60000;
   }
 
   .supporting {
+    margin: 0;
+    color: var(--foreground-dim2);
+    font-size: var(--font-size-12);
+    line-height: var(--line-height-14);
     overflow-wrap: anywhere;
   }
 
@@ -530,6 +223,15 @@
     font-weight: var(--font-weight-700);
   }
 
+  .state {
+    color: var(--action-link-fg);
+    font-size: var(--font-size-12);
+    font-weight: var(--font-weight-800);
+    line-height: var(--line-height-10);
+  }
+
+  /* ------------------------------------------------------ Skill picker */
+
   .skill-picker {
     position: relative;
     display: grid;
@@ -537,121 +239,66 @@
     min-inline-size: 0;
   }
 
-  .skill-results {
-    display: grid;
-    max-block-size: 220px;
-    overflow: auto;
-    border: var(--border-width-1) solid var(--app-line);
-    border-radius: var(--border-radius-8);
-    background: var(--app-panel-alt);
+  /* Combobox overrides to fix mounting padding bugs */
+  .combobox__control {
+    padding: 0 !important;
   }
 
-  .skill-results[hidden] {
-    display: none;
-  }
-
-  .skill-option {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-10);
-    inline-size: 100%;
-    min-inline-size: 0;
-    min-block-size: 44px;
-    padding: var(--spacing-10) var(--spacing-12);
-    border: 0;
-    border-block-end: var(--border-width-1) solid var(--app-line);
-    appearance: none;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-    text-align: start;
-  }
-
-  .skill-option:last-child {
-    border-block-end: 0;
-  }
-
-  .skill-option.is-highlighted {
-    background: var(--state-focus-background);
-  }
-
-  .skill-option.is-selected {
-    color: var(--foreground-dim2);
-  }
-
-  .skill-option__main {
-    display: grid;
-    gap: var(--spacing-4);
-    min-inline-size: 0;
-  }
-
-  .skill-option__name {
-    overflow: hidden;
-    color: var(--foreground-default);
-    font-size: var(--font-size-14);
-    font-weight: var(--font-weight-800);
-    line-height: var(--line-height-12);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .skill-option__description {
-    display: -webkit-box;
-    overflow: hidden;
-    color: var(--foreground-dim2);
-    font-size: var(--font-size-12);
-    line-height: var(--line-height-14);
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-  }
-
-  .skill-empty {
-    padding: var(--spacing-12);
-    color: var(--foreground-dim2);
-    font-size: var(--font-size-12);
-    font-weight: var(--font-weight-700);
-    line-height: var(--line-height-14);
+  .combobox__input {
+    padding: 0 40px 0 var(--spacing-16) !important;
   }
 
   .skill-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--spacing-6);
     min-block-size: var(--size-20);
   }
 
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-6);
-    max-inline-size: 100%;
-    min-block-size: 28px;
-    padding: 0 var(--spacing-8) 0 var(--spacing-10);
-    border: var(--border-width-1) solid var(--app-line-strong);
-    border-radius: var(--border-radius-800);
-    appearance: none;
-    background: transparent;
-    color: var(--foreground-default);
-    cursor: pointer;
-    font-size: var(--font-size-12);
-    font-weight: var(--font-weight-700);
+  /* Skill options carry extra description/source slots on top of the DS
+   * combobox option row; lay them out as a two-column grid. */
+  .skill-picker .combobox__popup {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
   }
 
-  .chip__label {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .skill-picker .combobox__listbox {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
   }
 
-  .chip__end-icon {
-    font-size: 16px;
+  .skill-option {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: var(--spacing-10) !important;
+    padding: var(--spacing-8) var(--spacing-16) !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .skill-option .combobox__option-text {
+    font-weight: var(--font-weight-700) !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .skill-option__source {
+    flex: 0 0 auto !important;
   }
 
   .import-status {
     min-block-size: var(--size-18);
   }
+
+  /* ------------------------------------------------------------- Runs */
 
   .run-search {
     display: grid;
@@ -662,96 +309,76 @@
     margin-block-end: 0;
   }
 
-  .agent-list,
   .run-list {
-    display: grid;
-    gap: var(--spacing-10);
-  }
-
-  .run-list {
-    gap: var(--spacing-16);
+    min-inline-size: 0;
     max-block-size: 340px;
     overflow: auto;
     padding-inline-end: var(--spacing-4);
   }
 
-  .agent-card {
+  /* ------------------------------------------------------------ Agents */
+
+  .agent-list {
     display: grid;
     gap: var(--spacing-10);
-    min-inline-size: 0;
-    padding: var(--spacing-12);
-    border: var(--border-width-1) solid var(--app-line);
-    border-inline-start-width: 4px;
-    border-radius: var(--border-radius-8);
   }
 
-  .agent-card.is-missing {
-    border-inline-start-color: var(--status-error);
-  }
-
-  .agent-card.is-disabled {
-    border-inline-start-color: var(--foreground-dim3);
-    opacity: 0.74;
-  }
-
-  .agent-card__main {
+  /* Compact single-row card: status dot + name on the left, Edit on the right. */
+  .agent-card {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
     justify-content: space-between;
-    gap: var(--spacing-8);
-    min-inline-size: 0;
+    gap: var(--spacing-10);
+    padding-block: var(--spacing-8);
+    padding-inline: var(--spacing-12);
   }
 
   .agent-card__identity {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: var(--spacing-8);
+    flex: 1 1 0;
     min-inline-size: 0;
   }
 
-  .agent-card__copy {
-    min-inline-size: 0;
-  }
-
-  .agent-card__status-icon {
-    display: inline-grid;
-    flex: 0 0 var(--dimension-20);
-    place-items: center;
-    inline-size: var(--dimension-20);
-    block-size: var(--dimension-20);
-    margin-block-start: 1px;
-    color: var(--status-success);
-    font-size: 0;
-    line-height: 1;
-  }
-
-  .agent-card__status-icon::before {
-    content: "";
-    inline-size: 10px;
-    block-size: 6px;
-    border-color: currentColor;
-    border-style: solid;
-    border-width: 0 0 var(--border-width-2) var(--border-width-2);
-    transform: translateY(-1px) rotate(-45deg);
-  }
-
-  .agent-card h3 {
-    overflow: hidden;
+  .agent-card__name {
     font-size: var(--font-size-14);
-    line-height: var(--line-height-12);
+    font-weight: var(--font-weight-700);
+    line-height: var(--line-height-14);
+    overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .agent-card p {
-    margin-block-start: var(--spacing-4);
-    overflow-wrap: anywhere;
+  .agent-card.is-disabled {
+    opacity: 0.74;
   }
 
-  .agent-card__meta {
-    justify-content: space-between;
-    gap: var(--spacing-8);
-    color: var(--foreground-dim2);
+  /* Editing state: card expands to show the inline form. */
+  .agent-card--editing {
+    display: block;
+    padding: var(--spacing-12);
+  }
+
+  .agent-inline-form {
+    display: grid;
+    gap: var(--spacing-12);
+  }
+
+  .agent-inline-form .agent-args-field .textarea {
     font-family: var(--font-family-geist-mono);
-    font-size: var(--font-size-12);
+  }
+
+  .agent-inline-actions {
+    display: flex;
+    flex-direction: row;
+    gap: var(--spacing-8);
+  }
+
+  .agent-inline-actions > .button {
+    flex: 1 1 0;
+    inline-size: 100%;
   }
 
   .agent-form {
@@ -765,76 +392,197 @@
     display: none;
   }
 
-  .agent-form-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--spacing-12);
-    align-items: end;
+  /* The DS field recipes set display:grid, which would override the HTML
+   * hidden attribute; the connection-type toggle relies on it. */
+  .agent-form [hidden] {
+    display: none;
   }
 
-  .switch-field {
+  .agent-presets {
+    display: grid;
+    gap: var(--spacing-8);
+  }
+
+  /* Inline agent-card select: flow the popup in normal layout so the card
+   * expands to contain it. The global .select__positioner is position:absolute
+   * (floating), which would be clipped by .setup-rail's overflow:auto. */
+  .agent-inline-select {
+    position: static;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: var(--spacing-8);
+  }
+
+  .agent-inline-select-trigger-column {
+    display: grid;
+    gap: var(--spacing-8);
+  }
+
+  .agent-inline-select .agent-form-grid {
+    width: 100%;
+  }
+
+  .agent-inline-select .select__positioner {
+    position: static;
+    display: none;
+    inset: unset;
+    z-index: auto;
+    width: 100%;
+  }
+
+  .agent-inline-select .select__positioner[data-open] {
+    display: block;
+  }
+
+  .agent-inline-select .select__popup {
+    /* Remove the floating shadow so it reads as an in-flow expansion. */
+    margin-block-start: var(--spacing-4);
+    box-shadow: none;
+    border-radius: var(--border-radius-8);
+    width: 100%;
+  }
+
+  .agent-inline-select .select__listbox {
+    width: 100%;
+  }
+
+  .agent-form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-12);
+    align-items: start;
+  }
+
+  .agent-args-field .textarea {
+    font-family: var(--font-family-geist-mono);
+  }
+
+  /* Success-colored switches for agent activation */
+  .agent-inline-switch .switch__track[data-checked],
+  #agentEnabled .switch__track[data-checked] {
+    background: var(--status-success);
+  }
+
+  /* -------------------------------------- Field label + hint row */
+
+  /* Aligns the label text and the hover-card trigger side-by-side. */
+  .input-label-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-6);
+    min-width: 0;
+  }
+
+  /* ---------------------------------------- field-hint-card (hover-card adapter) */
+  /* Uses nanaOS .hover-card static markup. JS delegates hover/focus open/close.
+   * We only need to size the outlined trigger button down to a compact
+   * circular '!' badge so it sits neatly beside every field label. */
+
+  .field-hint-card {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+  }
+
+  /* Constrain the positioner width so long descriptions wrap cleanly. */
+  .field-hint-card .hover-card__positioner {
+    inline-size: min(240px, calc(100vw - var(--spacing-32)));
+  }
+
+  /* Hoisted to the top layer (Popover API) so the rails' overflow:auto can't
+   * clip the card. app.js sets popover="manual" when supported and positions
+   * the card fixed against the trigger; this undoes the UA popover defaults
+   * (inset:0, margin:auto, border, padding, background, overflow:auto).
+   * Browsers without the API never get the attribute and keep the absolute
+   * in-rail positioning. The [data-side] padding rules below must stay after
+   * this block so the trigger gap survives the `padding: 0`. */
+  .field-hint-card .hover-card__positioner[popover] {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    overflow: visible;
+  }
+
+  /* Insurance against attribute drift (e.g. a re-render closing the popover
+   * while [data-open] is still set): hidden popovers stay hidden. */
+  .field-hint-card .hover-card__positioner[popover]:not(:popover-open) {
+    display: none;
+  }
+
+  /* The mounted nanaos.css reset layer zeroes padding and outranks the
+   * theme.css fallback layer until the design-system dist ships the
+   * hover-card recipe. Re-assert the recipe's own spacing (same tokens,
+   * so nothing drifts once the rebuilt dist takes over). */
+  .field-hint-card .hover-card__positioner[data-side="right"] {
+    padding-inline-start: var(--spacing-8);
+  }
+
+  .field-hint-card .hover-card__popup {
+    padding: var(--spacing-16);
+  }
+
+  /* Compact circular trigger: override the default outlined button sizing. */
+  .field-hint-card .hover-card__trigger.button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--spacing-8);
-    min-block-size: 40px;
-    color: var(--foreground-default);
-    font-size: var(--font-size-14);
+    width: 18px;
+    height: 18px;
+    min-inline-size: unset;
+    min-block-size: unset;
+    padding: 0;
+    border-radius: var(--border-radius-800);
+    font-size: 10px;
     font-weight: var(--font-weight-700);
+    line-height: 1;
+    color: var(--foreground-dim2);
+    border-color: var(--foreground-dim3);
+    background: transparent;
+    cursor: help;
+    transition:
+      background var(--enter-quick, 150ms ease),
+      border-color var(--enter-quick, 150ms ease),
+      color var(--enter-quick, 150ms ease);
   }
 
-  .switch-field input {
-    inline-size: 18px;
-    block-size: 18px;
-    accent-color: var(--state-focus);
+  .field-hint-card .hover-card__trigger.button:hover,
+  .field-hint-card .hover-card__trigger.button[data-popup-open] {
+    background: var(--state-hover-background);
+    border-color: var(--border-dim4);
+    color: var(--foreground-default);
   }
+
+  /* Make '!' text render correctly inside button__label. */
+  .field-hint-card .hover-card__trigger.button .button__label {
+    display: contents;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+  }
+
+  /* ---------------------------------------------------------- Workflow */
 
   .workflow-list {
-    display: grid;
-    gap: var(--spacing-8);
     margin-block-start: var(--spacing-12);
   }
 
-  .workflow-list .list__item {
-    display: grid;
-    grid-template-columns: 28px minmax(0, 1fr) 40px;
-    align-items: center;
-    gap: var(--spacing-10);
-    min-block-size: 58px;
-    padding: var(--spacing-10);
-    border: var(--border-width-1) solid var(--app-line);
-    border-radius: var(--border-radius-8);
-    background: var(--app-panel-alt);
-  }
-
-  .workflow-step--editing {
-    grid-template-columns: 28px minmax(0, 1fr) auto;
-  }
-
   .workflow-step.is-running {
-    border-color: var(--state-focus);
     background: var(--state-focus-background);
   }
 
-  .workflow-step__text,
-  .title-body {
-    display: grid;
-    gap: var(--spacing-4);
+  /* Row layout belongs to the list recipe (grid when nanaos.css is mounted,
+   * flex in the fallback theme) — children only declare sizing for both.
+   * gap keeps the title-body[data-title-size="14"] composition rhythm
+   * (spacing-14), which the list recipe would otherwise tighten to
+   * spacing-4 — steps must read exactly like the foundation sample. */
+  .workflow-step__text {
+    flex: 1 1 auto;
     min-inline-size: 0;
-  }
-
-  .title-body__title {
-    color: var(--foreground-default);
-    font-size: var(--font-size-12);
-    font-weight: var(--font-weight-800);
-    line-height: var(--line-height-12);
-  }
-
-  .title-body__body {
-    overflow-wrap: anywhere;
-    color: var(--foreground-dim1);
-    font-size: var(--font-size-14);
-    line-height: var(--line-height-14);
+    gap: var(--spacing-14);
   }
 
   .workflow-indicator {
@@ -842,28 +590,14 @@
     place-items: center;
     inline-size: 24px;
     block-size: 24px;
-    border: var(--border-width-2) solid var(--app-line-strong);
-    border-radius: var(--border-radius-800);
   }
 
-  .workflow-indicator.is-running {
-    border-color: var(--app-line-strong);
-    border-block-start-color: var(--action-primary-bg);
-    animation: workflow-spin 0.8s linear infinite;
+  .workflow-indicator.is-pending {
+    color: var(--foreground-dim3);
   }
 
   .workflow-indicator.is-complete {
-    border-color: var(--status-success);
-    background: var(--status-success);
-  }
-
-  .workflow-indicator.is-complete::before {
-    content: "";
-    inline-size: 8px;
-    block-size: 4px;
-    border: solid var(--foreground-inverse);
-    border-width: 0 0 var(--border-width-2) var(--border-width-2);
-    transform: translateY(-1px) rotate(-45deg);
+    color: var(--status-success);
   }
 
   .workflow-icon-button {
@@ -877,6 +611,8 @@
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
     gap: var(--spacing-10);
+    flex: 1 1 auto;
+    min-inline-size: 0;
   }
 
   .workflow-edit-field,
@@ -889,17 +625,26 @@
     resize: vertical;
   }
 
+  .workflow-edit-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-8);
+    justify-self: end;
+  }
+
+  .workflow-step--editing .workflow-save-button,
+  .workflow-step--editing .workflow-delete-button {
+    inline-size: auto;
+    min-inline-size: 86px;
+  }
+
   .workflow-status {
     min-block-size: 18px;
     margin-block-start: var(--spacing-8);
   }
 
-  .state {
-    color: var(--action-link-fg);
-    font-size: var(--font-size-12);
-    font-weight: var(--font-weight-800);
-    line-height: var(--line-height-10);
-  }
+  /* -------------------------------------------------------- Transcript */
 
   .debate-stage {
     display: grid;
@@ -936,15 +681,16 @@
     border: var(--border-width-1) solid var(--app-line);
     border-inline-start: 4px solid var(--action-link-fg);
     border-radius: var(--border-radius-8);
-    background: var(--background-default);
   }
 
   .message.debug {
     border-inline-start-color: var(--foreground-dim3);
-    background: var(--background-dim1);
+    background: var(--background-dim1) !important;
   }
 
   .message-title {
+    display: flex;
+    align-items: center;
     justify-content: space-between;
     gap: var(--spacing-10);
     color: var(--foreground-dim1);
@@ -958,85 +704,33 @@
     overflow: auto;
     white-space: pre-wrap;
     word-break: break-word;
+    font-family: var(--font-family-geist-mono);
     font-size: var(--font-size-14);
     line-height: var(--line-height-16);
   }
 
-  .run-item,
-  .empty-state {
-    min-block-size: 42px;
-    padding: var(--spacing-10);
-    border: var(--border-width-1) solid var(--app-line);
-    border-radius: var(--border-radius-8);
-    background: var(--app-panel-alt);
-    color: var(--foreground-dim1);
-    font-size: var(--font-size-12);
-    font-weight: var(--font-weight-700);
-    line-height: var(--line-height-14);
-    overflow-wrap: anywhere;
+  /* ---------------------------------------------------------- Settings */
+
+  /* data-scroll="viewport" keeps nested select/combobox popups unclipped, but
+   * the design system top-aligns that variant. Auto block margins restore
+   * center placement and still allow scrolling from the top when the popup
+   * is taller than the viewport. */
+  .settings-dialog .dialog-popup {
+    margin-block: auto;
   }
 
-  .run-link {
-    display: block;
-    color: inherit;
-    text-decoration: none;
-  }
-
-  .run-link:hover {
-    border-color: var(--state-focus);
-    color: var(--action-link-fg);
-  }
-
-  .settings-dialog {
-    inline-size: min(360px, calc(100dvw - 32px));
-    max-inline-size: calc(100dvw - 32px);
-    margin: 0;
-    position: fixed;
-    inset-block-start: 50%;
-    inset-inline-start: 50%;
-    transform: translate(-50%, -50%);
-    display: none;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: inherit;
-  }
-
-  .settings-dialog[open] {
-    display: block;
-  }
-
-  .settings-dialog::backdrop {
-    background: rgb(0 0 0 / 44%);
-    backdrop-filter: blur(14px);
-  }
-
-  .settings-panel {
-    display: grid;
-    gap: var(--spacing-16);
-    padding: var(--spacing-16);
-    border: var(--border-width-1) solid var(--app-line);
-    border-radius: var(--border-radius-8);
-    background: var(--background-default);
-    box-shadow: var(--app-shadow);
-  }
-
-  .settings-head {
-    align-items: center;
-  }
-
-  .settings-body {
-    display: grid;
-    gap: var(--spacing-16);
-  }
-
-  .settings-actions {
-    justify-content: flex-end;
+  /* The design-system select/combobox default to a fixed 320px column, wider
+   * than the 320px dialog's padded content box — stretch them to fit. */
+  .settings-language,
+  .settings-theme {
+    inline-size: 100%;
   }
 
   .settings-done {
     min-inline-size: 104px;
   }
+
+  /* ------------------------------------------------------------ Motion */
 
   @keyframes debate-pulse {
     0%,
@@ -1051,11 +745,7 @@
     }
   }
 
-  @keyframes workflow-spin {
-    to {
-      transform: rotate(1turn);
-    }
-  }
+  /* -------------------------------------------------------- Responsive */
 
   @media (max-width: 1180px) {
     body {
@@ -1113,32 +803,24 @@
     }
   }
 
-  @media (pointer: coarse) {
-    .button,
-    .skill-option,
-    .switch-field {
-      min-block-size: var(--target-size-44);
-    }
+  /* In dark mode, form inputs and outlined lists nested inside a surface container
+   * must step up one rung brighter than their container to read correctly. */
+  [data-theme="dark"] [data-surface] :is(.input, .textarea, .native-select, .combobox__input, .select__trigger, .list[data-frame="outlined"], .combobox__popup, .select__popup) {
+    background: var(--background-dim1);
+  }
+  [data-theme="dark"] [data-surface] [data-surface] :is(.input, .textarea, .native-select, .combobox__input, .select__trigger, .list[data-frame="outlined"], .combobox__popup, .select__popup) {
+    background: var(--background-dim2);
+  }
+  [data-theme="dark"] [data-surface] [data-surface] [data-surface] :is(.input, .textarea, .native-select, .combobox__input, .select__trigger, .list[data-frame="outlined"], .combobox__popup, .select__popup) {
+    background: var(--background-dim3);
+  }
+  [data-theme="dark"] [data-surface] [data-surface] [data-surface] [data-surface] :is(.input, .textarea, .native-select, .combobox__input, .select__trigger, .list[data-frame="outlined"], .combobox__popup, .select__popup) {
+    background: var(--background-dim4);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .debate-status.is-running::before,
-    .workflow-indicator.is-running {
+    .debate-status.is-running .badge {
       animation: none;
     }
-
-    .button,
-    .settings-dialog::backdrop {
-      transition: none;
-    }
   }
-}
-
-.button.button--outlined {
-  border: var(--border-width-1) solid var(--app-line-strong);
-}
-
-.button.button--plain,
-.button.button--filled {
-  border-width: 0;
 }
